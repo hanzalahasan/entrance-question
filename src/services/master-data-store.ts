@@ -4,12 +4,6 @@ import { subjectsMaster, topicsMaster } from "@/lib/master-data";
 const SUBJECTS_KEY = "master_subjects";
 const TOPICS_KEY = "master_topics";
 
-const HAS_SUPABASE =
-  !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
-  !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("your-project");
-
-// ── localStorage helpers ─────────────────────────────────────────────
-
 function localGetSubjects(): SubjectMaster[] {
   if (typeof window === "undefined") return subjectsMaster;
   const raw = localStorage.getItem(SUBJECTS_KEY);
@@ -42,74 +36,50 @@ function localSaveTopics(topics: TopicMaster[]) {
   }
 }
 
-// ── Public API ───────────────────────────────────────────────────────
-
 export async function getStoredSubjects(): Promise<SubjectMaster[]> {
-  if (!HAS_SUPABASE) return localGetSubjects();
-  const { fetchAllSubjects } = await import("@/actions/master-actions");
-  return fetchAllSubjects();
+  return localGetSubjects();
 }
 
 export async function getStoredTopics(): Promise<TopicMaster[]> {
-  if (!HAS_SUPABASE) return localGetTopics();
-  const { fetchAllTopics } = await import("@/actions/master-actions");
-  return fetchAllTopics();
+  return localGetTopics();
 }
 
 export async function saveSubject(
   subject: Omit<SubjectMaster, "id">
 ): Promise<SubjectMaster> {
-  if (!HAS_SUPABASE) {
-    const newSubject: SubjectMaster = { id: Date.now(), ...subject };
-    localSaveSubjects([...localGetSubjects(), newSubject]);
-    return newSubject;
-  }
-  const { insertSubject } = await import("@/actions/master-actions");
-  return insertSubject(subject);
+  const newSubject: SubjectMaster = { id: Date.now(), ...subject };
+  localSaveSubjects([...localGetSubjects(), newSubject]);
+  return newSubject;
 }
 
 export async function saveTopic(
   topic: Omit<TopicMaster, "id">
 ): Promise<TopicMaster> {
-  if (!HAS_SUPABASE) {
-    const newTopic: TopicMaster = { id: Date.now(), ...topic };
-    localSaveTopics([...localGetTopics(), newTopic]);
-    return newTopic;
-  }
-  const { insertTopic } = await import("@/actions/master-actions");
-  return insertTopic(topic);
+  const newTopic: TopicMaster = { id: Date.now(), ...topic };
+  localSaveTopics([...localGetTopics(), newTopic]);
+  return newTopic;
 }
 
 export async function toggleSubjectStatus(
   id: number,
   currentStatus: SubjectMaster["status"]
 ): Promise<void> {
-  const nextStatus = currentStatus === "active" ? "inactive" : "active";
-  if (!HAS_SUPABASE) {
-    localSaveSubjects(
-      localGetSubjects().map((s) =>
-        s.id === id ? { ...s, status: nextStatus } : s
-      ) as SubjectMaster[]
-    );
-    return;
-  }
-  const { patchSubjectStatus } = await import("@/actions/master-actions");
-  return patchSubjectStatus(id, nextStatus);
+  const next = currentStatus === "active" ? "inactive" : "active";
+  localSaveSubjects(
+    localGetSubjects().map((s) =>
+      s.id === id ? { ...s, status: next } : s
+    ) as SubjectMaster[]
+  );
 }
 
 export async function toggleTopicStatus(
   id: number,
   currentStatus: TopicMaster["status"]
 ): Promise<void> {
-  const nextStatus = currentStatus === "active" ? "inactive" : "active";
-  if (!HAS_SUPABASE) {
-    localSaveTopics(
-      localGetTopics().map((t) =>
-        t.id === id ? { ...t, status: nextStatus } : t
-      ) as TopicMaster[]
-    );
-    return;
-  }
-  const { patchTopicStatus } = await import("@/actions/master-actions");
-  return patchTopicStatus(id, nextStatus);
+  const next = currentStatus === "active" ? "inactive" : "active";
+  localSaveTopics(
+    localGetTopics().map((t) =>
+      t.id === id ? { ...t, status: next } : t
+    ) as TopicMaster[]
+  );
 }
