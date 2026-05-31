@@ -9,21 +9,11 @@ import { recheckAllDuplicates } from "@/services/recheck-duplicate-service";
 import type { Question } from "@/types/question";
 import type { SubjectMaster as SM, TopicMaster as TM } from "@/types/master";
 
-const TEMPLATE_HEADERS = [
-  "Question",
-  "Option A",
-  "Option B",
-  "Option C",
-  "Option D",
-  "Answer",       // A / B / C / D  — leave blank to let AI fill
-  "Subject",      // must match an existing subject, or leave blank for AI
-  "Topic",        // must match an existing topic, or leave blank for AI
-  "Year",         // optional
-  "Explanation",  // optional — AI will fill if blank
-  "Difficulty",   // optional — easy / medium / hard (default: medium)
-];
+// ── Types ────────────────────────────────────────────────────────────
 
-type RowStatus = "valid" | "error" | "filling";
+type SourceType = "excel" | "pdf-photo";
+type YearType = "past-year" | "no-year";
+type RowStatus = "valid" | "error";
 
 type ParsedRow = {
   rowIndex: number;
@@ -42,14 +32,26 @@ type ParsedRow = {
   errors: string[];
   subjectId?: number;
   topicId?: number;
-  aiFilled?: string[]; // field names filled by AI
+  aiFilled?: string[];
 };
+
+// ── Constants ────────────────────────────────────────────────────────
+
+const YEARS = Array.from({ length: 17 }, (_, i) => String(2026 - i));
+
+const EXCEL_HEADERS = [
+  "Question", "Option A", "Option B", "Option C", "Option D",
+  "Answer", "Subject", "Topic", "Year", "Explanation", "Difficulty",
+];
+
+// ── Helpers ──────────────────────────────────────────────────────────
 
 function validateRow(
   raw: Record<string, string>,
   idx: number,
   subjects: SM[],
-  topics: TM[]
+  topics: TM[],
+  yearOverride?: string
 ): ParsedRow {
   const get = (key: string) => (raw[key] ?? "").toString().trim();
 
@@ -61,26 +63,26 @@ function validateRow(
   const answer      = get("Answer").toUpperCase();
   const subjectName = get("Subject");
   const topicName   = get("Topic");
-  const year        = get("Year");
+  const year        = yearOverride || get("Year");
   const explanation = get("Explanation");
   const difficulty  = get("Difficulty").toLowerCase() || "medium";
 
   const errors: string[] = [];
 
-  if (!question)                              errors.push("Question is required");
-  if (!optionA)                               errors.push("Option A is required");
-  if (!optionB)                               errors.push("Option B is required");
-  if (!optionC)                               errors.push("Option C is required");
-  if (!optionD)                               errors.push("Option D is required");
+  if (!question)                                errors.push("Question is required");
+  if (!optionA)                                 errors.push("Option A is required");
+  if (!optionB)                                 errors.push("Option B is required");
+  if (!optionC)                                 errors.push("Option C is required");
+  if (!optionD)                                 errors.push("Option D is required");
   if (answer && !["A","B","C","D"].includes(answer))
-                                              errors.push("Answer must be A, B, C, or D");
+                                                errors.push("Answer must be A, B, C, or D");
   if (!["easy","medium","hard"].includes(difficulty))
-                                              errors.push("Difficulty must be easy, medium, or hard");
+                                                errors.push("Difficulty must be easy, medium, or hard");
 
   const subject = subjects.find(
     (s) => s.name.toLowerCase() === subjectName.toLowerCase() && s.status === "active"
   );
-  if (subjectName && !subject)               errors.push(`Subject "${subjectName}" not found`);
+  if (subjectName && !subject) errors.push(`Subject "${subjectName}" not found`);
 
   const topic = subject
     ? topics.find(
@@ -90,11 +92,7 @@ function validateRow(
           t.status === "active"
       )
     : undefined;
-  if (topicName && subject && !topic)        errors.push(`Topic "${topicName}" not found under ${subjectName}`);
-
-  // Fields that are blank and can be filled by AI — not errors yet
-  const needsAI =
-    !answer || !subjectName || !topicName || !explanation || (subjectName && !subject) || (topicName && subject && !topic);
+  if (topicName && subject && !topic) errors.push(`Topic "${topicName}" not found`);
 
   return {
     rowIndex: idx,
@@ -107,15 +105,8 @@ function validateRow(
   };
 }
 
-function needsAIFill(row: ParsedRow): boolean {
-  return (
-    !row.answer ||
-    !row.subjectName ||
-    !row.topicName ||
-    !row.explanation ||
-    !row.subjectId ||
-    !row.topicId
-  );
+function needsAIFill(row: ParsedRow) {
+  return !row.answer || !row.subjectId || !row.topicId || !row.explanation;
 }
 
 function rowToQuestion(row: ParsedRow): Question {
@@ -153,17 +144,40 @@ function rowToQuestion(row: ParsedRow): Question {
   };
 }
 
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve((reader.result as string).split(",")[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// ── Component ────────────────────────────────────────────────────────
+
 export default function ExcelImportPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [subjects, setSubjects] = useState<SM[]>([]);
   const [topics, setTopics] = useState<TM[]>([]);
+
+  // Settings
+  const [sourceType, setSourceType] = useState<SourceType>("excel");
+  const [yearType, setYearType] = useState<YearType>("no-year");
+  const [selectedYear, setSelectedYear] = useState(YEARS[0]);
+
+  // Data
   const [rows, setRows] = useState<ParsedRow[]>([]);
-  const [importing, setImporting] = useState(false);
+
+  // Status flags
+  const [extracting, setExtracting] = useState(false);
   const [aiFilling, setAiFilling] = useState(false);
   const [aiFillProgress, setAiFillProgress] = useState({ done: 0, total: 0 });
-  const [result, setResult] = useState<{ imported: number; skipped: number } | null>(null);
-  const [error, setError] = useState("");
+  const [importing, setImporting] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+
+  // Feedback
+  const [error, setError] = useState("");
+  const [result, setResult] = useState<{ imported: number; skipped: number } | null>(null);
 
   useEffect(() => {
     Promise.all([getStoredSubjects(), getStoredTopics()]).then(([s, t]) => {
@@ -172,50 +186,37 @@ export default function ExcelImportPage() {
     });
   }, []);
 
+  const yearOverride = yearType === "past-year" ? selectedYear : undefined;
+
+  // ── Excel template download ─────────────────────────────────────
+
   function downloadTemplate() {
     const ws = XLSX.utils.aoa_to_sheet([
-      TEMPLATE_HEADERS,
-      [
-        "What is the SI unit of Force?",
-        "Joule","Newton","Pascal","Watt",
-        "B","Physics","Mechanics","2024",
-        "Force is measured in Newton (N) according to SI units.",
-        "easy",
-      ],
-      [
-        "Which particle determines atomic number?",
-        "Electron","Neutron","Proton","Nucleus",
-        "","","","2023","","medium",
-      ],
+      EXCEL_HEADERS,
+      ["What is the SI unit of Force?", "Joule","Newton","Pascal","Watt","B","Physics","Mechanics","2024","Force is measured in Newton (N).","easy"],
+      ["Which particle determines atomic number?","Electron","Neutron","Proton","Nucleus","","","","","","medium"],
     ]);
-    ws["!cols"] = [
-      {wch:50},{wch:20},{wch:20},{wch:20},{wch:20},
-      {wch:8},{wch:15},{wch:20},{wch:8},{wch:40},{wch:12},
-    ];
+    ws["!cols"] = [{wch:50},{wch:18},{wch:18},{wch:18},{wch:18},{wch:8},{wch:15},{wch:18},{wch:8},{wch:38},{wch:12}];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Questions");
     XLSX.writeFile(wb, "questions-template.xlsx");
   }
 
-  function processFile(file: File) {
+  // ── Excel parsing ───────────────────────────────────────────────
+
+  function parseExcelFile(file: File) {
     setResult(null);
     setError("");
     setRows([]);
 
-    if (!file.name.match(/\.(xlsx|xls|csv)$/i)) {
-      setError("Please upload an Excel file (.xlsx, .xls) or CSV.");
-      return;
-    }
-
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const data = e.target?.result;
-        const wb = XLSX.read(data, { type: "binary" });
+        const wb = XLSX.read(e.target?.result, { type: "binary" });
         const ws = wb.Sheets[wb.SheetNames[0]];
         const json = XLSX.utils.sheet_to_json<Record<string, string>>(ws, { defval: "", raw: false });
-        if (json.length === 0) { setError("The file appears to be empty."); return; }
-        setRows(json.map((raw, idx) => validateRow(raw, idx + 2, subjects, topics)));
+        if (!json.length) { setError("The file appears to be empty."); return; }
+        setRows(json.map((raw, idx) => validateRow(raw, idx + 2, subjects, topics, yearOverride)));
       } catch {
         setError("Failed to read file. Make sure it matches the template format.");
       }
@@ -223,9 +224,82 @@ export default function ExcelImportPage() {
     reader.readAsBinaryString(file);
   }
 
+  // ── PDF / Photo extraction ──────────────────────────────────────
+
+  async function extractFromFile(file: File) {
+    setResult(null);
+    setError("");
+    setRows([]);
+    setExtracting(true);
+
+    try {
+      const base64 = await fileToBase64(file);
+      const mimeType = file.type || "image/jpeg";
+
+      const res = await fetch("/api/admin/extract-questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ base64, mimeType }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error ?? "Extraction failed.");
+        return;
+      }
+
+      const extracted: Array<Record<string, string>> = data.questions ?? [];
+
+      if (!extracted.length) {
+        setError("No questions found in this file. Try a clearer image or different file.");
+        return;
+      }
+
+      // Map extracted fields to Excel-column format for validateRow
+      const mapped = extracted.map((q, idx) => ({
+        "Question":    q.question    ?? "",
+        "Option A":    q.optionA     ?? "",
+        "Option B":    q.optionB     ?? "",
+        "Option C":    q.optionC     ?? "",
+        "Option D":    q.optionD     ?? "",
+        "Answer":      q.answer      ?? "",
+        "Subject":     q.subject     ?? "",
+        "Topic":       q.topic       ?? "",
+        "Year":        yearOverride  ?? q.year ?? "",
+        "Explanation": q.explanation ?? "",
+        "Difficulty":  q.difficulty  ?? "medium",
+      }));
+
+      setRows(mapped.map((raw, idx) => validateRow(raw, idx + 1, subjects, topics, yearOverride)));
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setExtracting(false);
+    }
+  }
+
+  // ── File input handlers ─────────────────────────────────────────
+
+  function handleFile(file: File) {
+    if (sourceType === "excel") {
+      if (!file.name.match(/\.(xlsx|xls|csv)$/i)) {
+        setError("Please upload an Excel file (.xlsx, .xls) or CSV.");
+        return;
+      }
+      parseExcelFile(file);
+    } else {
+      if (!file.name.match(/\.(pdf|jpg|jpeg|png|webp|gif)$/i)) {
+        setError("Please upload a PDF or image file (.pdf, .jpg, .png, .webp).");
+        return;
+      }
+      extractFromFile(file);
+    }
+  }
+
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (file) processFile(file);
+    if (file) handleFile(file);
     e.target.value = "";
   }
 
@@ -233,12 +307,14 @@ export default function ExcelImportPage() {
     e.preventDefault();
     setDragOver(false);
     const file = e.dataTransfer.files[0];
-    if (file) processFile(file);
+    if (file) handleFile(file);
   }
+
+  // ── AI fill ─────────────────────────────────────────────────────
 
   async function handleAIFill() {
     const needFill = rows.filter((r) => r.question && needsAIFill(r));
-    if (needFill.length === 0) return;
+    if (!needFill.length) return;
 
     setAiFilling(true);
     setAiFillProgress({ done: 0, total: needFill.length });
@@ -264,37 +340,28 @@ export default function ExcelImportPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             question: row.question,
-            optionA: row.optionA,
-            optionB: row.optionB,
-            optionC: row.optionC,
-            optionD: row.optionD,
-            subjects,
-            topics: topicsWithSubject,
-            missing,
+            optionA: row.optionA, optionB: row.optionB,
+            optionC: row.optionC, optionD: row.optionD,
+            subjects, topics: topicsWithSubject, missing,
           }),
         });
 
         const data = await res.json();
-
-        if (!res.ok) {
-          setError(data.error ?? "AI fill failed. Check your OPENAI_API_KEY in Vercel.");
-          break;
-        }
+        if (!res.ok) { setError(data.error ?? "AI fill failed."); break; }
 
         const filled = data.filled as Record<string, string>;
         const aiFilled: string[] = [];
 
-        const newSubjectName = filled.subject?.trim() || row.subjectName;
-        const newTopicName   = filled.topic?.trim()   || row.topicName;
-        const newAnswer      = (filled.answer?.trim().toUpperCase()) || row.answer;
-        const newExplanation = filled.explanation?.trim() || row.explanation;
+        const newSubjectName  = filled.subject?.trim()              || row.subjectName;
+        const newTopicName    = filled.topic?.trim()                || row.topicName;
+        const newAnswer       = filled.answer?.trim().toUpperCase() || row.answer;
+        const newExplanation  = filled.explanation?.trim()          || row.explanation;
 
         if (filled.subject)     aiFilled.push("subject");
         if (filled.topic)       aiFilled.push("topic");
         if (filled.answer)      aiFilled.push("answer");
         if (filled.explanation) aiFilled.push("explanation");
 
-        // Re-resolve IDs with new names
         const resolvedSubject = subjects.find(
           (s) => s.name.toLowerCase() === newSubjectName.toLowerCase() && s.status === "active"
         );
@@ -310,7 +377,7 @@ export default function ExcelImportPage() {
         const errors: string[] = [];
         if (!newAnswer || !["A","B","C","D"].includes(newAnswer)) errors.push("Answer must be A, B, C, or D");
         if (!resolvedSubject) errors.push(`Subject "${newSubjectName}" not found`);
-        if (resolvedSubject && !resolvedTopic) errors.push(`Topic "${newTopicName}" not found under ${newSubjectName}`);
+        if (resolvedSubject && !resolvedTopic) errors.push(`Topic "${newTopicName}" not found`);
         if (!row.optionA || !row.optionB || !row.optionC || !row.optionD)
           errors.push("All options are required");
 
@@ -330,19 +397,20 @@ export default function ExcelImportPage() {
         updatedRows = updatedRows.map((r) => (r.rowIndex === row.rowIndex ? updatedRow : r));
         setRows([...updatedRows]);
       } catch {
-        setError("Network error during AI fill. Please try again.");
-        break;
+        setError("Network error during AI fill."); break;
       }
 
-      setAiFillProgress((prev) => ({ ...prev, done: prev.done + 1 }));
+      setAiFillProgress((p) => ({ ...p, done: p.done + 1 }));
     }
 
     setAiFilling(false);
   }
 
+  // ── Import ───────────────────────────────────────────────────────
+
   async function handleImport() {
     const validRows = rows.filter((r) => r.status === "valid");
-    if (validRows.length === 0) return;
+    if (!validRows.length) return;
 
     setImporting(true);
     setError("");
@@ -350,8 +418,7 @@ export default function ExcelImportPage() {
     try {
       const existing = await getStoredQuestions();
       const newQuestions = validRows.map(rowToQuestion);
-      const all = recheckAllDuplicates([...newQuestions, ...existing]);
-      await saveQuestions(all);
+      await saveQuestions(recheckAllDuplicates([...newQuestions, ...existing]));
       setResult({ imported: validRows.length, skipped: rows.length - validRows.length });
       setRows([]);
     } catch {
@@ -361,14 +428,22 @@ export default function ExcelImportPage() {
     }
   }
 
-  const validCount   = rows.filter((r) => r.status === "valid").length;
-  const errorCount   = rows.filter((r) => r.status === "error").length;
-  const needFillCount = rows.filter((r) => r.question && needsAIFill(r) && r.status !== "filling").length;
+  // ── Derived ──────────────────────────────────────────────────────
+
+  const validCount    = rows.filter((r) => r.status === "valid").length;
+  const errorCount    = rows.filter((r) => r.status === "error").length;
+  const needFillCount = rows.filter((r) => r.question && needsAIFill(r)).length;
+
+  const acceptAttr = sourceType === "excel"
+    ? ".xlsx,.xls,.csv"
+    : ".pdf,.jpg,.jpeg,.png,.webp,.gif";
+
+  // ── Render ───────────────────────────────────────────────────────
 
   return (
     <AdminLayout
-      title="Excel Import"
-      description="Import questions in bulk. Leave subject, topic, answer, or explanation blank — AI will fill them in."
+      title="Import Questions"
+      description="Bulk import from Excel or extract from PDF and photos using AI."
     >
       {error && (
         <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">
@@ -379,95 +454,168 @@ export default function ExcelImportPage() {
 
       {result && (
         <div className="mb-5 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm font-bold text-green-700">
-          ✅ Import complete — {result.imported} question{result.imported !== 1 ? "s" : ""} imported as drafts.
-          {result.skipped > 0 && ` ${result.skipped} row${result.skipped !== 1 ? "s" : ""} skipped due to errors.`}
+          ✅ {result.imported} question{result.imported !== 1 ? "s" : ""} imported as drafts.
+          {result.skipped > 0 && ` ${result.skipped} row${result.skipped !== 1 ? "s" : ""} skipped.`}
           <button onClick={() => setResult(null)} className="ml-3 underline">Dismiss</button>
         </div>
       )}
 
       <div className="space-y-5">
-        {/* Template download */}
-        <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <h2 className="text-lg font-black text-gray-900 dark:text-white">
-                Step 1 — Download Template
-              </h2>
-              <p className="mt-1 text-sm font-semibold text-gray-500 dark:text-slate-400">
-                Only <span className="text-gray-900 dark:text-white">Question</span> and{" "}
-                <span className="text-gray-900 dark:text-white">Options A–D</span> are required.
-                Leave Answer, Subject, Topic, or Explanation blank — AI will fill them automatically.
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {["Question ✱","Option A ✱","Option B ✱","Option C ✱","Option D ✱",
-                  "Answer 🤖","Subject 🤖","Topic 🤖","Year","Explanation 🤖","Difficulty"].map((h) => (
-                  <span
-                    key={h}
-                    className={`rounded-full px-3 py-1 text-xs font-bold ${
-                      h.includes("✱")
-                        ? "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
-                        : h.includes("🤖")
-                        ? "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300"
-                        : "bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-400"
-                    }`}
-                  >
-                    {h}
-                  </span>
-                ))}
-              </div>
-              <p className="mt-2 text-xs font-semibold text-gray-400">
-                ✱ Required &nbsp;·&nbsp; 🤖 AI fills if blank
-              </p>
-            </div>
 
+        {/* ── Step 1: Source type ─────────────────────────────────── */}
+        <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <h2 className="mb-4 text-lg font-black text-gray-900 dark:text-white">Step 1 — Source Type</h2>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            {([
+              { id: "excel",     label: "Excel / CSV",    desc: "Upload a filled spreadsheet. Download the template to get started.", icon: "📊" },
+              { id: "pdf-photo", label: "PDF or Photo",   desc: "Upload a scanned question paper or photo. AI will extract the questions.", icon: "📄" },
+            ] as const).map((opt) => (
+              <button
+                key={opt.id}
+                onClick={() => { setSourceType(opt.id); setRows([]); setError(""); }}
+                className={`rounded-2xl border-2 p-4 text-left transition ${
+                  sourceType === opt.id
+                    ? "border-blue-600 bg-blue-50 dark:bg-blue-950/30"
+                    : "border-gray-200 hover:border-gray-300 dark:border-slate-700 dark:hover:border-slate-600"
+                }`}
+              >
+                <div className="mb-1 text-2xl">{opt.icon}</div>
+                <p className="font-black text-gray-900 dark:text-white">{opt.label}</p>
+                <p className="mt-0.5 text-sm font-semibold text-gray-500 dark:text-slate-400">{opt.desc}</p>
+              </button>
+            ))}
+          </div>
+
+          {sourceType === "excel" && (
             <button
               onClick={downloadTemplate}
-              className="shrink-0 rounded-2xl bg-blue-600 px-6 py-3 font-black text-white transition hover:bg-blue-700"
+              className="mt-4 rounded-2xl border border-gray-300 px-5 py-2.5 text-sm font-black text-gray-700 transition hover:bg-gray-50 dark:border-slate-700 dark:text-white dark:hover:bg-slate-800"
             >
-              Download Template
+              Download Excel Template
             </button>
-          </div>
+          )}
+
+          {sourceType === "pdf-photo" && (
+            <div className="mt-4 rounded-2xl border border-orange-200 bg-orange-50 p-3 text-sm font-semibold text-orange-700 dark:border-orange-900 dark:bg-orange-950/30 dark:text-orange-300">
+              📌 Accepted: .pdf (searchable), .jpg, .png, .webp — for scanned PDFs, take a screenshot and upload as image.
+              AI will extract all questions and options automatically. Requires <code className="rounded bg-orange-100 px-1 dark:bg-orange-900">OPENAI_API_KEY</code>.
+            </div>
+          )}
         </div>
 
-        {/* Upload */}
+        {/* ── Step 2: Year ────────────────────────────────────────── */}
+        <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <h2 className="mb-4 text-lg font-black text-gray-900 dark:text-white">Step 2 — Question Year</h2>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            {([
+              { id: "past-year", label: "Past Year Question Set", desc: "All questions in this file are from a specific exam year." },
+              { id: "no-year",   label: "Practice / No Year",     desc: "Questions are not tied to any specific exam year." },
+            ] as const).map((opt) => (
+              <button
+                key={opt.id}
+                onClick={() => setYearType(opt.id)}
+                className={`rounded-2xl border-2 p-4 text-left transition ${
+                  yearType === opt.id
+                    ? "border-blue-600 bg-blue-50 dark:bg-blue-950/30"
+                    : "border-gray-200 hover:border-gray-300 dark:border-slate-700"
+                }`}
+              >
+                <p className="font-black text-gray-900 dark:text-white">{opt.label}</p>
+                <p className="mt-0.5 text-sm font-semibold text-gray-500 dark:text-slate-400">{opt.desc}</p>
+              </button>
+            ))}
+          </div>
+
+          {yearType === "past-year" && (
+            <div className="mt-4 flex items-center gap-3">
+              <label className="text-sm font-black text-gray-700 dark:text-white">Select Year:</label>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                className="h-11 rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+              >
+                {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
+              </select>
+              <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-black text-green-700">
+                All questions → {selectedYear}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* ── Step 3: Upload ──────────────────────────────────────── */}
         <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <h2 className="mb-4 text-lg font-black text-gray-900 dark:text-white">
-            Step 2 — Upload File
+            Step 3 — Upload {sourceType === "excel" ? "Spreadsheet" : "PDF or Photo"}
           </h2>
 
           <div
             onDrop={handleDrop}
             onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
             onDragLeave={() => setDragOver(false)}
-            onClick={() => fileRef.current?.click()}
-            className={`flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition ${
-              dragOver
+            onClick={() => !extracting && fileRef.current?.click()}
+            className={`flex min-h-44 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition ${
+              extracting
+                ? "cursor-default border-purple-300 bg-purple-50 dark:bg-purple-950/20"
+                : dragOver
                 ? "border-blue-500 bg-blue-50 dark:bg-blue-950/20"
                 : "border-gray-300 hover:border-blue-400 hover:bg-gray-50 dark:border-slate-700 dark:hover:bg-slate-800"
             }`}
           >
-            <p className="text-lg font-black text-gray-700 dark:text-white">
-              Drag &amp; drop your file here
-            </p>
-            <p className="mt-1 text-sm font-semibold text-gray-500 dark:text-slate-400">
-              or click to browse — .xlsx, .xls, .csv accepted
-            </p>
+            {extracting ? (
+              <>
+                <div className="mb-2 text-3xl">🤖</div>
+                <p className="text-lg font-black text-purple-700 dark:text-purple-300">
+                  Extracting questions...
+                </p>
+                <p className="mt-1 text-sm font-semibold text-purple-500">
+                  AI is reading your file. This may take 10–30 seconds.
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="mb-2 text-3xl">
+                  {sourceType === "excel" ? "📊" : "📄"}
+                </div>
+                <p className="text-lg font-black text-gray-700 dark:text-white">
+                  Drag &amp; drop or click to browse
+                </p>
+                <p className="mt-1 text-sm font-semibold text-gray-500 dark:text-slate-400">
+                  {sourceType === "excel"
+                    ? "Accepts .xlsx, .xls, .csv"
+                    : "Accepts .pdf, .jpg, .png, .webp"}
+                </p>
+              </>
+            )}
           </div>
 
-          <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleFileChange} className="hidden" />
+          <input
+            ref={fileRef}
+            type="file"
+            accept={acceptAttr}
+            onChange={handleFileChange}
+            className="hidden"
+          />
         </div>
 
-        {/* Preview + AI fill + Import */}
+        {/* ── Step 4: Preview, AI fill, Import ────────────────────── */}
         {rows.length > 0 && (
           <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-black text-gray-900 dark:text-white">
-                  Step 3 — Review &amp; Import
+                  Step 4 — Review &amp; Import
                 </h2>
                 <p className="mt-1 text-sm font-semibold text-gray-500 dark:text-slate-400">
+                  {yearType === "past-year" && (
+                    <span className="mr-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-black text-green-700">
+                      Year: {selectedYear}
+                    </span>
+                  )}
                   <span className="text-green-600">{validCount} valid</span>
-                  {errorCount > 0 && <span className="ml-2 text-red-600">{errorCount} with errors</span>}
+                  {errorCount > 0 && <span className="ml-2 text-red-600">{errorCount} errors</span>}
                   {needFillCount > 0 && <span className="ml-2 text-purple-600">{needFillCount} need AI fill</span>}
                 </p>
               </div>
@@ -499,7 +647,7 @@ export default function ExcelImportPage() {
               <table className="w-full min-w-[900px] border-separate border-spacing-y-2 text-sm">
                 <thead>
                   <tr className="text-left text-xs font-black text-gray-500">
-                    <th className="px-3 py-2">Row</th>
+                    <th className="px-3 py-2">#</th>
                     <th className="px-3 py-2">Question</th>
                     <th className="px-3 py-2">Subject</th>
                     <th className="px-3 py-2">Topic</th>
@@ -551,7 +699,9 @@ export default function ExcelImportPage() {
                         )}
                       </td>
 
-                      <td className="px-3 py-3 text-gray-700 dark:text-slate-300">{row.year || "—"}</td>
+                      <td className="px-3 py-3 text-gray-700 dark:text-slate-300">
+                        {row.year || "—"}
+                      </td>
 
                       <td className="rounded-r-2xl px-3 py-3">
                         {needsAIFill(row) && row.status !== "valid" ? (
