@@ -7,6 +7,7 @@ const menuItems = [
   { label: "Dashboard", href: "/admin" },
   { label: "Question Management", href: "/admin/questions" },
   { label: "Add Question", href: "/admin/add-question" },
+  { label: "Excel Import", href: "/admin/import" },
   { label: "Settings", href: "/admin/settings" },
 ];
 
