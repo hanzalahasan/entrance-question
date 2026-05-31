@@ -12,128 +12,95 @@ import {
   saveQuestions,
   updateQuestion,
 } from "@/services/admin-question-store";
-
 import {
   findClassificationConflicts,
   findExactDuplicateQuestions,
   findRepeatedYearQuestions,
 } from "@/services/duplicate-question-service";
-
 import { recheckAllDuplicates } from "@/services/recheck-duplicate-service";
-
+import { validateQuestion } from "@/lib/question-validation";
 import type { Question } from "@/types/question";
 
 export default function EditQuestionPage() {
   const params = useParams();
   const router = useRouter();
-
   const questionId = Number(params.id);
 
   const [questionData, setQuestionData] = useState<Question | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    getStoredQuestionById(questionId).then((found) => {
-      setQuestionData(found);
-      setLoading(false);
-    });
+    getStoredQuestionById(questionId)
+      .then(setQuestionData)
+      .catch(() => setError("Failed to load question."))
+      .finally(() => setLoading(false));
   }, [questionId]);
-
-  function validateQuestion(question: Question) {
-    return (
-      question.question.trim() &&
-      question.subjectId &&
-      question.topicId &&
-      question.answer &&
-      question.options.every((option) => {
-        if (option.type === "image") return option.imageUrl;
-        if (option.type === "text_image") {
-          return option.value?.trim() && option.imageUrl;
-        }
-
-        return option.value?.trim();
-      })
-    );
-  }
 
   async function saveChanges(status?: Question["status"]) {
     if (!questionData) return;
 
-    if (!validateQuestion(questionData)) {
-      alert("Please complete question, options, correct answer, subject, and topic.");
-      return;
+    const validationError = validateQuestion(questionData);
+    if (validationError) { setError(validationError); return; }
+
+    setSaving(true);
+    setError("");
+
+    try {
+      const prepared: Question = {
+        ...questionData,
+        status: status ?? questionData.status,
+        source: questionData.year ? "past_year" : "practice",
+        updatedAt: new Date().toISOString(),
+      };
+
+      const existing = await getStoredQuestions();
+
+      const conflicts = findClassificationConflicts(prepared, existing);
+      if (conflicts.length > 0) {
+        const c = conflicts[0];
+        setError(`This question exists under ${c.subjectName || "another subject"} → ${c.topicName || "another topic"}.`);
+        return;
+      }
+
+      if (findExactDuplicateQuestions(prepared, existing).length > 0) {
+        setError("This exact question already exists for the same subject, topic, and year.");
+        return;
+      }
+
+      const repeatedYears = [
+        ...new Set([
+          ...findRepeatedYearQuestions(prepared, existing)
+            .map((q) => q.year)
+            .filter(Boolean),
+          prepared.year,
+        ]),
+      ] as string[];
+
+      await updateQuestion({
+        ...prepared,
+        repeatedYears,
+        repeatCount: repeatedYears.length || 1,
+        duplicateCheckStatus: "unique",
+        possibleDuplicateIds: [],
+      });
+
+      const all = await getStoredQuestions();
+      await saveQuestions(recheckAllDuplicates(all));
+
+      router.push("/admin/questions");
+    } catch {
+      setError("Failed to save changes. Please try again.");
+    } finally {
+      setSaving(false);
     }
-
-    const preparedQuestion: Question = {
-      ...questionData,
-      status: status || questionData.status,
-      source: questionData.year ? "past_year" : "practice",
-      updatedAt: new Date().toISOString(),
-    };
-
-    const existingQuestions = await getStoredQuestions();
-
-    const classificationConflicts = findClassificationConflicts(
-      preparedQuestion,
-      existingQuestions
-    );
-
-    if (classificationConflicts.length > 0) {
-      const conflict = classificationConflicts[0];
-
-      alert(
-        `This question already exists under ${conflict.subjectName || "another subject"} → ${
-          conflict.topicName || "another topic"
-        }. Please review the existing question instead of saving the same question under a different classification.`
-      );
-
-      return;
-    }
-
-    const exactDuplicates = findExactDuplicateQuestions(
-      preparedQuestion,
-      existingQuestions
-    );
-
-    if (exactDuplicates.length > 0) {
-      alert(
-        "This question already exists for the same subject, topic, and year. Duplicate question is not allowed."
-      );
-
-      return;
-    }
-
-    const repeatedYearQuestions = findRepeatedYearQuestions(
-      preparedQuestion,
-      existingQuestions
-    );
-
-    const repeatedYears = Array.from(
-      new Set([
-        ...repeatedYearQuestions.map((question) => question.year).filter(Boolean),
-        preparedQuestion.year,
-      ])
-    ) as string[];
-
-    await updateQuestion({
-      ...preparedQuestion,
-      repeatedYears,
-      repeatCount: repeatedYears.length || 1,
-      duplicateCheckStatus: "unique",
-      possibleDuplicateIds: [],
-    });
-
-    const allQuestions = await getStoredQuestions();
-    const rechecked = recheckAllDuplicates(allQuestions);
-    await saveQuestions(rechecked);
-
-    router.push("/admin/questions");
   }
 
   if (loading) {
     return (
       <AdminLayout title="Edit / Review Question">
-        <div className="rounded-3xl border border-gray-200 bg-white p-6 font-bold text-gray-700">
+        <div className="rounded-3xl border border-gray-200 bg-white p-8 text-center text-sm font-bold text-gray-500 dark:border-slate-800 dark:bg-slate-900">
           Loading question...
         </div>
       </AdminLayout>
@@ -155,9 +122,17 @@ export default function EditQuestionPage() {
       title="Edit / Review Question"
       description="Update question details, answer, explanation, and status."
     >
+      {error && (
+        <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">
+          {error}
+          <button onClick={() => setError("")} className="ml-3 underline">Dismiss</button>
+        </div>
+      )}
+
       <QuestionForm
         questionData={questionData}
         onChange={setQuestionData}
+        saving={saving}
         onSaveDraft={() => saveChanges("draft")}
         onPublish={() => saveChanges("published")}
         publishButtonLabel="Save Changes"

@@ -15,6 +15,7 @@ type QuestionFormProps = {
   onSaveDraft: () => void;
   onPublish: () => void;
   publishButtonLabel?: string;
+  saving?: boolean;
 };
 
 const years = Array.from({ length: 17 }, (_, index) => String(2026 - index));
@@ -25,6 +26,7 @@ export default function QuestionForm({
   onSaveDraft,
   onPublish,
   publishButtonLabel = "Publish Question",
+  saving = false,
 }: QuestionFormProps) {
   const [allSubjects, setAllSubjects] = useState<SubjectMaster[]>([]);
   const [allTopics, setAllTopics] = useState<TopicMaster[]>([]);
@@ -420,14 +422,16 @@ export default function QuestionForm({
       <div className="flex flex-wrap justify-end gap-3">
         <button
           onClick={onSaveDraft}
-          className="rounded-2xl border border-gray-300 px-6 py-3 font-black text-gray-700 dark:border-slate-700 dark:text-white"
+          disabled={saving}
+          className="rounded-2xl border border-gray-300 px-6 py-3 font-black text-gray-700 disabled:opacity-50 dark:border-slate-700 dark:text-white"
         >
-          Save Draft
+          {saving ? "Saving..." : "Save Draft"}
         </button>
 
         <button
           onClick={onPublish}
-          className="rounded-2xl bg-green-600 px-6 py-3 font-black text-white"
+          disabled={saving}
+          className="rounded-2xl bg-green-600 px-6 py-3 font-black text-white disabled:opacity-50"
         >
           {publishButtonLabel}
         </button>

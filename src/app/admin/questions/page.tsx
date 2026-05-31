@@ -8,6 +8,7 @@ import QuestionFilters from "@/components/admin/questions/question-filters";
 import QuestionTable from "@/components/admin/questions/question-table";
 import QuestionPagination from "@/components/admin/questions/question-pagination";
 import QuestionBulkActions from "@/components/admin/questions/question-bulk-actions";
+import ConfirmDialog from "@/components/ui/confirm-dialog";
 
 import type { Question } from "@/types/question";
 
@@ -23,19 +24,20 @@ import { recheckAllDuplicates } from "@/services/recheck-duplicate-service";
 
 const QUESTIONS_PER_PAGE = 10;
 
-function normalizeQuestionStatus(question: Question): Question {
-  const legacyStatus = question.status as Question["status"] | "archived";
-
-  return {
-    ...question,
-    status: legacyStatus === "archived" ? "unpublished" : question.status,
-  };
+function normalizeStatus(q: Question): Question {
+  const s = q.status as Question["status"] | "archived";
+  return { ...q, status: s === "archived" ? "unpublished" : q.status };
 }
+
+type ConfirmState = { message: string; onConfirm: () => void } | null;
 
 export default function QuestionManagementPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [activeTab, setActiveTab] = useState<"active" | "unpublished">("active");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [confirm, setConfirm] = useState<ConfirmState>(null);
 
+  const [activeTab, setActiveTab] = useState<"active" | "unpublished">("active");
   const [search, setSearch] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("");
   const [yearFilter, setYearFilter] = useState("");
@@ -43,130 +45,121 @@ export default function QuestionManagementPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
-  useEffect(() => {
-    getStoredQuestions().then((all) => {
-      setQuestions(all.map(normalizeQuestionStatus));
-    });
-  }, []);
+  async function load() {
+    try {
+      const all = await getStoredQuestions();
+      setQuestions(all.map(normalizeStatus));
+    } catch {
+      setError("Failed to load questions.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); }, []);
 
   const activeQuestions = questions.filter(
-    (question) => question.status === "published" || question.status === "draft"
+    (q) => q.status === "published" || q.status === "draft"
   );
-
-  const unpublishedQuestions = questions.filter(
-    (question) => question.status === "unpublished"
-  );
-
-  const baseQuestions =
-    activeTab === "active" ? activeQuestions : unpublishedQuestions;
+  const unpublishedQuestions = questions.filter((q) => q.status === "unpublished");
+  const baseQuestions = activeTab === "active" ? activeQuestions : unpublishedQuestions;
 
   const filteredQuestions = useMemo(() => {
-    return baseQuestions.filter((question) => {
-      const matchesSearch =
-        !search ||
-        question.question.toLowerCase().includes(search.toLowerCase());
-
-      const matchesSubject =
-        !subjectFilter || question.subjectName === subjectFilter;
-
-      const matchesYear = !yearFilter || question.year === yearFilter;
-
-      const matchesDifficulty =
-        !difficultyFilter || question.difficulty === difficultyFilter;
-
+    return baseQuestions.filter((q) => {
+      const matchesSearch = !search || q.question.toLowerCase().includes(search.toLowerCase());
+      const matchesSubject = !subjectFilter || q.subjectName === subjectFilter;
+      const matchesYear = !yearFilter || q.year === yearFilter;
+      const matchesDifficulty = !difficultyFilter || q.difficulty === difficultyFilter;
       return matchesSearch && matchesSubject && matchesYear && matchesDifficulty;
     });
   }, [baseQuestions, search, subjectFilter, yearFilter, difficultyFilter]);
 
   const totalPages = Math.ceil(filteredQuestions.length / QUESTIONS_PER_PAGE);
-
   const paginatedQuestions = filteredQuestions.slice(
     (currentPage - 1) * QUESTIONS_PER_PAGE,
     currentPage * QUESTIONS_PER_PAGE
   );
 
-  const subjects = Array.from(
-    new Set(questions.map((question) => question.subjectName).filter(Boolean))
-  ) as string[];
-
-  const years = Array.from(
-    new Set(questions.map((question) => question.year).filter(Boolean))
-  ) as string[];
-
-  const difficulties = Array.from(
-    new Set(questions.map((question) => question.difficulty))
-  );
-
-  async function refreshQuestions() {
-    const all = await getStoredQuestions();
-    setQuestions(all.map(normalizeQuestionStatus));
-  }
+  const subjects = [...new Set(questions.map((q) => q.subjectName).filter(Boolean))] as string[];
+  const years = [...new Set(questions.map((q) => q.year).filter(Boolean))] as string[];
+  const difficulties = [...new Set(questions.map((q) => q.difficulty))];
 
   async function handleRecheckDuplicates() {
-    const all = await getStoredQuestions();
-    const normalized = all.map(normalizeQuestionStatus);
-    const rechecked = recheckAllDuplicates(normalized);
-    await saveQuestions(rechecked);
-    setQuestions(rechecked);
-    alert("Duplicate check completed.");
+    try {
+      const all = await getStoredQuestions();
+      const rechecked = recheckAllDuplicates(all.map(normalizeStatus));
+      await saveQuestions(rechecked);
+      setQuestions(rechecked);
+    } catch {
+      setError("Duplicate recheck failed.");
+    }
   }
 
-  async function handleUnpublish(id: number) {
-    const confirmAction = window.confirm(
-      "Are you sure you want to unpublish this question?"
-    );
-    if (!confirmAction) return;
-
-    await unpublishQuestion(id);
-    setSelectedIds((prev) => prev.filter((item) => item !== id));
-    await refreshQuestions();
+  function handleUnpublish(id: number) {
+    setConfirm({
+      message: "Unpublish this question?",
+      onConfirm: async () => {
+        setConfirm(null);
+        try {
+          await unpublishQuestion(id);
+          setSelectedIds((prev) => prev.filter((x) => x !== id));
+          await load();
+        } catch {
+          setError("Failed to unpublish question.");
+        }
+      },
+    });
   }
 
   async function handlePublish(id: number) {
-    await publishQuestion(id);
-    setSelectedIds((prev) => prev.filter((item) => item !== id));
-    await refreshQuestions();
+    try {
+      await publishQuestion(id);
+      setSelectedIds((prev) => prev.filter((x) => x !== id));
+      await load();
+    } catch {
+      setError("Failed to publish question.");
+    }
   }
 
-  async function handleBulkUnpublish() {
-    const confirmAction = window.confirm(
-      `Are you sure you want to unpublish ${selectedIds.length} question(s)?`
-    );
-    if (!confirmAction) return;
-
-    await bulkUpdateQuestionStatus(selectedIds, "unpublished");
-    setSelectedIds([]);
-    await refreshQuestions();
+  function handleBulkUnpublish() {
+    setConfirm({
+      message: `Unpublish ${selectedIds.length} question(s)?`,
+      onConfirm: async () => {
+        setConfirm(null);
+        try {
+          await bulkUpdateQuestionStatus(selectedIds, "unpublished");
+          setSelectedIds([]);
+          await load();
+        } catch {
+          setError("Bulk unpublish failed.");
+        }
+      },
+    });
   }
 
   async function handleBulkPublish() {
-    await bulkUpdateQuestionStatus(selectedIds, "published");
-    setSelectedIds([]);
-    await refreshQuestions();
+    try {
+      await bulkUpdateQuestionStatus(selectedIds, "published");
+      setSelectedIds([]);
+      await load();
+    } catch {
+      setError("Bulk publish failed.");
+    }
   }
 
   function handleSelect(id: number) {
     setSelectedIds((prev) =>
-      prev.includes(id)
-        ? prev.filter((item) => item !== id)
-        : [...prev, id]
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
   }
 
   function handleSelectAll() {
-    const currentPageIds = paginatedQuestions.map((question) => question.id);
-
-    const allSelected = currentPageIds.every((id) =>
-      selectedIds.includes(id)
+    const pageIds = paginatedQuestions.map((q) => q.id);
+    const allSelected = pageIds.every((id) => selectedIds.includes(id));
+    setSelectedIds(allSelected
+      ? selectedIds.filter((id) => !pageIds.includes(id))
+      : [...new Set([...selectedIds, ...pageIds])]
     );
-
-    if (allSelected) {
-      setSelectedIds((prev) =>
-        prev.filter((id) => !currentPageIds.includes(id))
-      );
-    } else {
-      setSelectedIds((prev) => [...new Set([...prev, ...currentPageIds])]);
-    }
   }
 
   function resetPage() {
@@ -174,38 +167,48 @@ export default function QuestionManagementPage() {
     setSelectedIds([]);
   }
 
+  if (loading) {
+    return (
+      <AdminLayout title="Question Management">
+        <div className="rounded-3xl border border-gray-200 bg-white p-8 text-center text-sm font-bold text-gray-500 dark:border-slate-800 dark:bg-slate-900">
+          Loading questions...
+        </div>
+      </AdminLayout>
+    );
+  }
+
   return (
     <AdminLayout
       title="Question Management"
       description="View, search, edit, review, publish, and unpublish questions."
     >
+      {confirm && (
+        <ConfirmDialog
+          message={confirm.message}
+          onConfirm={confirm.onConfirm}
+          onCancel={() => setConfirm(null)}
+        />
+      )}
+
+      {error && (
+        <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">
+          {error}
+          <button onClick={() => setError("")} className="ml-3 underline">Dismiss</button>
+        </div>
+      )}
+
       <div className="space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex gap-2">
             <button
-              onClick={() => {
-                setActiveTab("active");
-                resetPage();
-              }}
-              className={`rounded-full px-4 py-2 text-sm font-black ${
-                activeTab === "active"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-600"
-              }`}
+              onClick={() => { setActiveTab("active"); resetPage(); }}
+              className={`rounded-full px-4 py-2 text-sm font-black ${activeTab === "active" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600"}`}
             >
               Active ({activeQuestions.length})
             </button>
-
             <button
-              onClick={() => {
-                setActiveTab("unpublished");
-                resetPage();
-              }}
-              className={`rounded-full px-4 py-2 text-sm font-black ${
-                activeTab === "unpublished"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-600"
-              }`}
+              onClick={() => { setActiveTab("unpublished"); resetPage(); }}
+              className={`rounded-full px-4 py-2 text-sm font-black ${activeTab === "unpublished" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600"}`}
             >
               Unpublished ({unpublishedQuestions.length})
             </button>
@@ -231,33 +234,15 @@ export default function QuestionManagementPage() {
           <div className="space-y-5">
             <QuestionToolbar
               search={search}
-              onSearchChange={(value) => {
-                setSearch(value);
-                resetPage();
-              }}
+              onSearchChange={(v) => { setSearch(v); resetPage(); }}
             />
-
             <QuestionFilters
-              subject={subjectFilter}
-              year={yearFilter}
-              difficulty={difficultyFilter}
-              subjects={subjects}
-              years={years}
-              difficulties={difficulties}
-              onSubjectChange={(value) => {
-                setSubjectFilter(value);
-                resetPage();
-              }}
-              onYearChange={(value) => {
-                setYearFilter(value);
-                resetPage();
-              }}
-              onDifficultyChange={(value) => {
-                setDifficultyFilter(value);
-                resetPage();
-              }}
+              subject={subjectFilter} year={yearFilter} difficulty={difficultyFilter}
+              subjects={subjects} years={years} difficulties={difficulties}
+              onSubjectChange={(v) => { setSubjectFilter(v); resetPage(); }}
+              onYearChange={(v) => { setYearFilter(v); resetPage(); }}
+              onDifficultyChange={(v) => { setDifficultyFilter(v); resetPage(); }}
             />
-
             <QuestionTable
               questions={paginatedQuestions}
               activeTab={activeTab}
@@ -267,7 +252,6 @@ export default function QuestionManagementPage() {
               onPublish={handlePublish}
               onUnpublish={handleUnpublish}
             />
-
             <QuestionPagination
               currentPage={currentPage}
               totalPages={totalPages}
