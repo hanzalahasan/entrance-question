@@ -1,28 +1,49 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import AdminLayout from "@/components/admin/admin-layout";
+import { getStoredQuestions } from "@/services/admin-question-store";
 
 export default function AdminDashboardPage() {
+  const [stats, setStats] = useState({
+    total: 0,
+    published: 0,
+    draft: 0,
+    unpublished: 0,
+  });
+
+  useEffect(() => {
+    getStoredQuestions().then((questions) => {
+      setStats({
+        total: questions.length,
+        published: questions.filter((q) => q.status === "published").length,
+        draft: questions.filter((q) => q.status === "draft").length,
+        unpublished: questions.filter((q) => q.status === "unpublished").length,
+      });
+    });
+  }, []);
+
+  const cards = [
+    { label: "Total Questions", value: stats.total },
+    { label: "Published", value: stats.published },
+    { label: "Draft", value: stats.draft },
+    { label: "Unpublished", value: stats.unpublished },
+  ];
+
   return (
     <AdminLayout
       title="Admin Dashboard"
       description="Manage questions, users, reviews, imports, and platform settings."
     >
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {[
-          "Total Questions",
-          "Draft Questions",
-          "Pending Review",
-          "Users",
-        ].map((item) => (
+        {cards.map((card) => (
           <div
-            key={item}
+            key={card.label}
             className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900"
           >
-            <p className="text-sm font-bold text-gray-500">
-              {item}
-            </p>
-
+            <p className="text-sm font-bold text-gray-500">{card.label}</p>
             <h2 className="mt-2 text-3xl font-black text-gray-900 dark:text-white">
-              0
+              {card.value}
             </h2>
           </div>
         ))}
