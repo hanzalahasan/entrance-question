@@ -13,6 +13,14 @@ export const sampleQuestions: Question[] = [
     ],
     answer: "B",
     explanation: "Force is measured in Newton (N) according to SI units.",
+    explanationLong:
+      "Force is defined by Newton's second law as F = m·a — mass times acceleration. " +
+      "The SI unit, the newton (N), is therefore the force needed to accelerate a 1 kg mass " +
+      "at 1 m/s², so 1 N = 1 kg·m/s². The other options are different quantities built from the " +
+      "newton: a joule (J) is energy/work (1 J = 1 N·m), a pascal (Pa) is pressure " +
+      "(1 Pa = 1 N/m²), and a watt (W) is power (1 W = 1 J/s). A common exam trap is to confuse " +
+      "force with energy or pressure because their units all derive from the newton.",
+    concepts: ["force", "newton's laws of motion", "si units"],
     subjectId: 1,
     topicId: 1,
     subjectName: "Physics",
@@ -45,6 +53,14 @@ export const sampleQuestions: Question[] = [
     ],
     answer: "C",
     explanation: "Atomic number equals the number of protons present in the nucleus.",
+    explanationLong:
+      "The atomic number (Z) is the number of protons in an atom's nucleus, and it defines which " +
+      "element the atom is — change the proton count and you change the element. Electrons " +
+      "(option A) determine charge and bonding but not identity; in a neutral atom they merely " +
+      "equal the proton count. Neutrons (option B) set the isotope/mass number, not the element. " +
+      "'Nucleus' (option D) is the structure that holds protons and neutrons, not a particle. So " +
+      "only the proton count fixes the atomic number.",
+    concepts: ["atomic structure", "subatomic particles", "atomic number"],
     subjectId: 2,
     topicId: 3,
     subjectName: "Chemistry",
@@ -77,6 +93,14 @@ export const sampleQuestions: Question[] = [
     ],
     answer: "B",
     explanation: "Mitochondria produce ATP energy for cellular functions.",
+    explanationLong:
+      "Mitochondria are called the powerhouse of the cell because they carry out aerobic " +
+      "respiration, producing most of the cell's ATP through the Krebs cycle and the electron " +
+      "transport chain on the inner membrane (cristae). Ribosomes (A) build proteins, the Golgi " +
+      "body (C) packages and ships them, and the nucleus (D) stores DNA and directs the cell. " +
+      "Mitochondria also have their own DNA and are thought to have originated from " +
+      "free-living bacteria (the endosymbiotic theory) — a frequent exam follow-up.",
+    concepts: ["cell organelles", "cellular respiration", "atp", "mitochondria"],
     subjectId: 4,
     topicId: 6,
     subjectName: "Zoology",

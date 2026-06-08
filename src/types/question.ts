@@ -43,7 +43,17 @@ export type Question = {
   question: string;
   options: QuestionOptionType[];
   answer: string;
+
+  // Short explanation (always shown) + optional deep "Explain more" content.
+  // explanationLong is admin-written now; Phase 2 fills it from books + AI.
   explanation: string;
+  explanationLong?: string;
+
+  // Concept tags used to surface related questions (and later embeddings).
+  concepts?: string[];
+  // Pre-computed related question ids (Phase 2). When empty, related questions
+  // are computed live by shared concept/topic — see related-question-service.
+  relatedQuestionIds?: number[];
 
   subjectId: number;
   topicId: number;

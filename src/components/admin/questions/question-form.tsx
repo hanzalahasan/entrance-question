@@ -370,11 +370,44 @@ export default function QuestionForm({
             Explanation
           </h2>
 
+          <label className="mb-1 block text-xs font-black uppercase tracking-wide text-gray-500">
+            Short explanation (always shown)
+          </label>
           <textarea
             value={questionData.explanation}
             onChange={(event) => updateField("explanation", event.target.value)}
-            rows={8}
+            rows={4}
+            placeholder="A concise 1–3 sentence explanation."
             className="w-full rounded-2xl border border-gray-300 bg-gray-50 p-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+          />
+
+          <label className="mb-1 mt-4 block text-xs font-black uppercase tracking-wide text-gray-500">
+            Long explanation (shown on “Explain more”)
+          </label>
+          <textarea
+            value={questionData.explanationLong || ""}
+            onChange={(event) => updateField("explanationLong", event.target.value)}
+            rows={6}
+            placeholder="A deeper, all-around explanation of the concept. Leave blank to hide the “Explain more” button. (Phase 2 can auto-fill this from your books.)"
+            className="w-full rounded-2xl border border-gray-300 bg-gray-50 p-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+          />
+
+          <label className="mb-1 mt-4 block text-xs font-black uppercase tracking-wide text-gray-500">
+            Concepts (comma-separated — used to find related questions)
+          </label>
+          <input
+            value={(questionData.concepts || []).join(", ")}
+            onChange={(event) =>
+              updateField(
+                "concepts",
+                event.target.value
+                  .split(",")
+                  .map((c) => c.trim())
+                  .filter(Boolean)
+              )
+            }
+            placeholder="e.g. cellular respiration, atp, mitochondria"
+            className="h-12 w-full rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-white"
           />
 
           <div className="mt-4 grid gap-3 md:grid-cols-2">

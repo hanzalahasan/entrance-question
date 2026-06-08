@@ -54,7 +54,7 @@ export default function HomePage() {
         />
 
         <section className="flex min-h-[70vh] items-center justify-center">
-          <QuestionCard questions={filteredQuestions} />
+          <QuestionCard questions={filteredQuestions} pool={questions} />
         </section>
       </div>
     </main>

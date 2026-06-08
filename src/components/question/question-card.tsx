@@ -7,18 +7,28 @@ import {
   getRandomQuestionId,
   saveSeenQuestionId,
 } from "@/services/question-service";
+import { getRelatedQuestions } from "@/services/related-question-service";
 
 type QuestionCardProps = {
   questions: Question[];
+  // All published questions (unfiltered) — used to look up + show related
+  // questions, which may fall outside the current subject/year/topic filter.
+  pool?: Question[];
 };
 
-export default function QuestionCard({ questions }: QuestionCardProps) {
+export default function QuestionCard({ questions, pool }: QuestionCardProps) {
   const [currentQuestionId, setCurrentQuestionId] = useState<number | null>(null);
   const [previousQuestionId, setPreviousQuestionId] = useState<number | null>(null);
   const [hasUsedPrevious, setHasUsedPrevious] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);
+  // Inside the explanation modal: whether the long explanation is expanded, and
+  // which panel is shown (the explanation vs the related-questions list).
+  const [showLong, setShowLong] = useState(false);
+  const [explanationTab, setExplanationTab] = useState<"explanation" | "related">(
+    "explanation"
+  );
   // Whether the explanation has been opened at least once this question — lets
   // the Enter flow know to advance (rather than re-open) after it's been closed.
   const [explanationSeen, setExplanationSeen] = useState(false);
@@ -65,21 +75,39 @@ export default function QuestionCard({ questions }: QuestionCardProps) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  const foundQuestion = questions.find(
-    (question) => question.id === currentQuestionId
-  );
+  // Resolve the current question from the full pool (so we can show a related
+  // question that sits outside the active filter), falling back to the filter.
+  const lookup = pool && pool.length > 0 ? pool : questions;
+  const foundQuestion =
+    lookup.find((question) => question.id === currentQuestionId) ??
+    questions.find((question) => question.id === currentQuestionId);
 
   function resetQuestionState() {
     setSelectedAnswer(null);
     setShowAnswer(false);
     setShowExplanation(false);
+    setShowLong(false);
+    setExplanationTab("explanation");
     setExplanationSeen(false);
     setHighlightedIndex(0);
   }
 
   function openExplanation() {
     setShowExplanation(true);
+    setShowLong(false);
+    setExplanationTab("explanation");
     setExplanationSeen(true);
+  }
+
+  // Jump to a related question (it may be outside the active filter — that's
+  // fine; "Next" afterwards resumes normal random practice within the filter).
+  function goToRelatedQuestion(id: number) {
+    setShowExplanation(false);
+    setPreviousQuestionId(currentQuestionId);
+    setCurrentQuestionId(id);
+    setHasUsedPrevious(false);
+    saveSeenQuestionId(id);
+    resetQuestionState();
   }
 
   if (questions.length === 0) {
@@ -103,6 +131,13 @@ export default function QuestionCard({ questions }: QuestionCardProps) {
     currentQuestion.subjectName || `Subject ${currentQuestion.subjectId}`;
   const topicLabel =
     currentQuestion.topicName || `Topic ${currentQuestion.topicId}`;
+
+  const hasLongExplanation = Boolean(currentQuestion.explanationLong?.trim());
+  const relatedQuestions = getRelatedQuestions(
+    currentQuestion,
+    pool && pool.length > 0 ? pool : questions,
+    10
+  );
 
   const repeatedYears = currentQuestion.repeatedYears || [];
   const repeatCount = currentQuestion.repeatCount || repeatedYears.length;
@@ -355,31 +390,120 @@ export default function QuestionCard({ questions }: QuestionCardProps) {
 
       {showExplanation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="max-h-[80vh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-6 shadow-xl dark:bg-slate-800">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                Explanation
-              </h3>
+          {/* Grows when the long explanation / related list is open, and the
+              body scrolls so deep content stays usable. */}
+          <div
+            className={`flex max-h-[88vh] w-full flex-col rounded-3xl bg-white shadow-xl transition-all dark:bg-slate-800 ${
+              showLong || explanationTab === "related"
+                ? "max-w-3xl"
+                : "max-w-xl"
+            }`}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-gray-200 p-5 dark:border-slate-700">
+              {explanationTab === "related" ? (
+                <button
+                  onClick={() => setExplanationTab("explanation")}
+                  className="text-sm font-black text-blue-600 transition hover:text-blue-700"
+                >
+                  ← Back to explanation
+                </button>
+              ) : (
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                  Explanation
+                </h3>
+              )}
 
               <button
                 onClick={() => setShowExplanation(false)}
-                className="rounded-full bg-red-600 px-4 py-2 text-sm font-bold text-white"
+                className="rounded-full bg-red-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-700 active:scale-95"
               >
                 Close
               </button>
             </div>
 
-            {currentQuestion.media?.explanationImageUrl && (
-              <img
-                src={currentQuestion.media.explanationImageUrl}
-                alt="Explanation diagram"
-                className="mb-4 max-h-80 rounded-2xl border border-gray-200 object-contain"
-              />
-            )}
+            {/* Scrollable body */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {explanationTab === "explanation" ? (
+                <>
+                  {currentQuestion.media?.explanationImageUrl && (
+                    <img
+                      src={currentQuestion.media.explanationImageUrl}
+                      alt="Explanation diagram"
+                      className="mb-4 max-h-80 rounded-2xl border border-gray-200 object-contain"
+                    />
+                  )}
 
-            <p className="leading-relaxed text-gray-700 dark:text-slate-300">
-              {currentQuestion.explanation}
-            </p>
+                  <p className="leading-relaxed text-gray-700 dark:text-slate-300">
+                    {currentQuestion.explanation}
+                  </p>
+
+                  {showLong && hasLongExplanation && (
+                    <div className="mt-5 border-t border-gray-200 pt-5 dark:border-slate-700">
+                      <h4 className="mb-2 text-sm font-black uppercase tracking-wide text-gray-500">
+                        In depth
+                      </h4>
+                      <p className="whitespace-pre-line leading-relaxed text-gray-700 dark:text-slate-300">
+                        {currentQuestion.explanationLong}
+                      </p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div>
+                  <p className="mb-4 text-sm font-semibold text-gray-500 dark:text-slate-400">
+                    Practice {relatedQuestions.length} question
+                    {relatedQuestions.length !== 1 ? "s" : ""} related to this concept.
+                  </p>
+                  <div className="space-y-3">
+                    {relatedQuestions.map((rq) => (
+                      <button
+                        key={rq.id}
+                        onClick={() => goToRelatedQuestion(rq.id)}
+                        className="block w-full rounded-2xl border border-gray-200 p-4 text-left transition hover:border-blue-400 hover:bg-blue-50 active:scale-[0.99] dark:border-slate-600 dark:hover:border-blue-500 dark:hover:bg-slate-700"
+                      >
+                        <p className="font-semibold text-gray-900 dark:text-white">
+                          {rq.question}
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-700">
+                            {rq.subjectName || "Subject"}
+                          </span>
+                          <span className="rounded-full bg-purple-50 px-2.5 py-0.5 text-xs font-bold text-purple-700">
+                            {rq.topicName || "Topic"}
+                          </span>
+                          <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-bold capitalize text-gray-600">
+                            {rq.difficulty}
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer actions */}
+            {explanationTab === "explanation" && (
+              <div className="flex flex-wrap gap-2 border-t border-gray-200 p-4 dark:border-slate-700">
+                {hasLongExplanation && !showLong && (
+                  <button
+                    onClick={() => setShowLong(true)}
+                    className="rounded-2xl bg-blue-600 px-5 py-3 font-black text-white transition hover:bg-blue-700 active:scale-95"
+                  >
+                    Explain more ↓
+                  </button>
+                )}
+                {relatedQuestions.length > 0 && (
+                  <button
+                    onClick={() => setExplanationTab("related")}
+                    className="rounded-2xl border border-gray-300 px-5 py-3 font-black text-gray-700 transition hover:bg-gray-50 active:scale-95 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700"
+                  >
+                    Related questions ({relatedQuestions.length})
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

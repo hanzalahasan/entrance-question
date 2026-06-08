@@ -9,7 +9,7 @@
 > time a feature is added or changed in the app, this file is updated to match — automatically,
 > without being asked.
 >
-> **Last synced with codebase:** 2026-06-08 (Supabase project connected & live)
+> **Last synced with codebase:** 2026-06-08 (Phase 1: long explanation + related questions)
 
 ---
 
@@ -346,7 +346,10 @@ export type Question = {
   question: string;
   options: QuestionOptionType[];
   answer: string;                  // the correct option key, e.g. "B"
-  explanation: string;
+  explanation: string;             // short explanation (always shown)
+  explanationLong?: string;        // deep "Explain more" content (Phase 2: AI from books)
+  concepts?: string[];             // concept tags → power related questions
+  relatedQuestionIds?: number[];   // Phase 2 pre-computed; else computed live by concept/topic
 
   subjectId: number;
   topicId: number;
@@ -633,7 +636,21 @@ Flashcard practice flow over the filtered list:
   - `isLocked = isCorrect || showAnswer` disables further option clicks.
 - Footer: **Previous** (only once, only if a previous exists & unused), center action button
   (Explanation/Reveal depending on state), **Next** (random next, marks seen, stores previous).
-- Explanation modal: overlay with explanation text + optional `media.explanationImageUrl`.
+- Explanation modal (Phase 1 — multi-panel, grows + scrolls):
+  - **Explanation panel:** short `explanation` (+ optional image). An **"Explain more ↓"** button
+    (shown only when `explanationLong` is non-empty) reveals the long explanation in a scrollable
+    "In depth" section; the modal widens to `max-w-3xl`.
+  - **"Related questions (n)"** button → switches to the **related panel**: a list of 5–10
+    questions sharing this question's concept/topic (via `related-question-service`), each clickable.
+  - Clicking a related question (`goToRelatedQuestion`) closes the modal and loads that question
+    into the card — even if it's outside the active filter (the card resolves the current question
+    from the `pool` prop = all published questions). "Next" afterward resumes normal random practice.
+  - "← Back to explanation" returns to the explanation panel; Close/Escape/Enter exits.
+
+### `src/services/related-question-service.ts`
+`getRelatedQuestions(current, pool, max=10)` — if `current.relatedQuestionIds` is set (Phase 2),
+returns those; else scores every other published question by shared concept tags (dominant) + same
+topic + same subject, sorts, and returns the top `max`. Phase 1 = no ML; Phase 2 swaps in embeddings.
 - **Keyboard navigation** (global `keydown` listener, bound once via a ref that always calls the
   latest closure; ignores events when focus is in an input/textarea/select):
   - **↑ / ↓** — move the option highlight (`highlightedIndex`, clamped 0..n-1). Mouse hover and
@@ -891,6 +908,13 @@ preview table (then AI-fill / import as above).
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-08** — **Phase 1 (richer explanations + related questions).** Added `explanationLong`,
+  `concepts`, `relatedQuestionIds` to the `Question` model + DB (migrated live Supabase + schema.sql).
+  Student explanation modal is now multi-panel: short → **"Explain more"** (long, scrollable, wider
+  modal) → **"Related questions"** (5–10 by shared concept/topic, clickable → jumps to that question,
+  then resumes random). New `related-question-service` (no ML — concept/topic scoring; Phase 2 swaps
+  in embeddings). Admin form gained Long Explanation + Concepts (comma-separated) fields. Designed to
+  blend book knowledge + AI in Phase 2.
 - **2026-06-08** — **Connected a live Supabase project** (ref `isohkebvmuskaorcjawg`, eu-central-1):
   ran `schema.sql`, set `NEXT_PUBLIC_SUPABASE_*` in Vercel + `.env.local`, redeployed. The
   production site now uses the shared PostgreSQL DB — admin/imported+published questions reach all
