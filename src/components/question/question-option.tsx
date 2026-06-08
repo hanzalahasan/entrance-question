@@ -9,6 +9,7 @@ type QuestionOptionProps = {
   disabled: boolean;
   highlighted?: boolean;
   onClick: () => void;
+  onMouseEnter?: () => void;
 };
 
 export default function QuestionOption({
@@ -20,24 +21,25 @@ export default function QuestionOption({
   disabled,
   highlighted = false,
   onClick,
+  onMouseEnter,
 }: QuestionOptionProps) {
-  const statusClass =
+  // One unified highlight state, shared by mouse hover and keyboard arrows.
+  // No separate `hover:` background, so only ever one option looks active.
+  const stateClass =
     status === "correct"
       ? "border-green-500 bg-green-50 text-green-700"
       : status === "wrong"
         ? "border-red-500 bg-red-50 text-red-700"
-        : "border-gray-200 bg-white text-gray-800 hover:border-blue-400 hover:bg-blue-50 dark:border-slate-600 dark:bg-slate-900 dark:text-white";
-
-  // Keyboard focus ring (Up/Down arrows move this highlight).
-  const highlightClass = highlighted
-    ? "ring-2 ring-blue-500 ring-offset-1 dark:ring-offset-slate-800"
-    : "";
+        : highlighted
+          ? "border-blue-500 bg-blue-50 text-gray-900 ring-2 ring-blue-500/40 dark:border-blue-400 dark:bg-slate-700 dark:text-white"
+          : "border-gray-200 bg-white text-gray-800 dark:border-slate-600 dark:bg-slate-900 dark:text-white";
 
   return (
     <button
       onClick={onClick}
+      onMouseEnter={onMouseEnter}
       disabled={disabled}
-      className={`w-full rounded-2xl border p-4 text-left font-semibold transition disabled:cursor-not-allowed ${statusClass} ${highlightClass}`}
+      className={`w-full rounded-2xl border p-4 text-left font-semibold transition disabled:cursor-not-allowed ${stateClass}`}
     >
       <div className="flex gap-3">
         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gray-100 text-sm font-black text-gray-700">

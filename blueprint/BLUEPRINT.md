@@ -9,7 +9,7 @@
 > time a feature is added or changed in the app, this file is updated to match — automatically,
 > without being asked.
 >
-> **Last synced with codebase:** 2026-06-08 (nav-button press feedback)
+> **Last synced with codebase:** 2026-06-08 (unified mouse/keyboard option highlight)
 
 ---
 
@@ -611,8 +611,13 @@ Flashcard practice flow over the filtered list:
 - Explanation modal: overlay with explanation text + optional `media.explanationImageUrl`.
 - **Keyboard navigation** (global `keydown` listener, bound once via a ref that always calls the
   latest closure; ignores events when focus is in an input/textarea/select):
-  - **↑ / ↓** — move the option highlight (`highlightedIndex`, clamped 0..n-1). The highlighted
-    option shows a blue focus ring (`QuestionOption` `highlighted` prop) while unanswered.
+  - **↑ / ↓** — move the option highlight (`highlightedIndex`, clamped 0..n-1). Mouse hover and
+    the arrow keys share this **one** highlight state: hovering an option sets `highlightedIndex`
+    (`onMouseEnter`), so pressing arrows afterward continues from the hovered option. There is no
+    separate `hover:` background — only ever one option looks active.
+  - The highlighted option (while unanswered) shows: light mode → `bg-blue-50` + blue border/ring;
+    dark mode → `bg-slate-700` (clearly lighter than the slate-900 option / slate-800 card) + white
+    text + blue border/ring, so it stays readable in dark mode.
   - **← / →** — previous / next question.
   - **Enter** — if unanswered: select the highlighted option; if answered-wrong-and-unrevealed:
     reveal; if correct or already revealed: go to next question.
@@ -850,6 +855,11 @@ preview table (then AI-fill / import as above).
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-08** — Unified the option highlight: mouse hover and keyboard arrows now drive the same
+  `highlightedIndex` (hover sets it via `onMouseEnter`, so arrows continue from the hovered option).
+  Removed the separate `hover:bg-blue-50` (which in dark mode turned the option near-white and hid
+  the text and looked like a second selection). The single highlight now uses a dark-mode-readable
+  `bg-slate-700` style. Only ever one option appears active.
 - **2026-06-08** — Added press feedback to the practice-card nav buttons: Previous/Next now have
   hover + `active:scale-95` states and a `navPulse` flash that fires on both click and ←/→ keys
   (keyboard navigation now visibly registers). Explanation/Reveal got hover + active states too.

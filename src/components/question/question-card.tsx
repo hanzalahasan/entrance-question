@@ -262,6 +262,7 @@ export default function QuestionCard({ questions }: QuestionCardProps) {
               status={getOptionStatus(option.key)}
               disabled={isLocked}
               highlighted={!isAnswered && index === highlightedIndex}
+              onMouseEnter={() => setHighlightedIndex(index)}
               onClick={() => {
                 setHighlightedIndex(index);
                 handleSelectAnswer(option.key);
