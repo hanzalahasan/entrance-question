@@ -40,7 +40,7 @@ export default function QuestionForm({
     getStoredTopics().then(setAllTopics);
   }, []);
 
-  async function handleGenerateLong() {
+  async function handleGenerateExplanations() {
     setGenerating(true);
     setGenerateError("");
     try {
@@ -66,10 +66,12 @@ export default function QuestionForm({
         setGenerateError(data.error ?? "Generation failed.");
         return;
       }
+      // Fill BOTH short and long explanations (and concepts). All remain
+      // editable below before the admin saves.
       onChange({
         ...questionData,
-        explanationLong: data.longExplanation,
-        // Only fill concepts if the admin hasn't set any.
+        explanation: data.explanation || questionData.explanation,
+        explanationLong: data.longExplanation || questionData.explanationLong || "",
         concepts:
           questionData.concepts && questionData.concepts.length > 0
             ? questionData.concepts
@@ -411,9 +413,26 @@ export default function QuestionForm({
         </div>
 
         <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-          <h2 className="mb-4 text-lg font-black text-gray-900 dark:text-white">
-            Explanation
-          </h2>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-lg font-black text-gray-900 dark:text-white">
+              Explanation
+            </h2>
+            <button
+              type="button"
+              onClick={handleGenerateExplanations}
+              disabled={generating || !questionData.question || !questionData.answer}
+              title="Generate the short + long explanation and concepts with AI. You can edit them after."
+              className="rounded-full bg-purple-600 px-4 py-1.5 text-xs font-black text-white transition hover:bg-purple-700 active:scale-95 disabled:opacity-50"
+            >
+              {generating ? "✨ Generating…" : "✨ Generate with AI"}
+            </button>
+          </div>
+
+          {generateError && (
+            <div className="mb-3 rounded-xl border border-red-200 bg-red-50 p-2 text-xs font-bold text-red-700">
+              {generateError}
+            </div>
+          )}
 
           <label className="mb-1 block text-xs font-black uppercase tracking-wide text-gray-500">
             Short explanation (always shown)
@@ -422,33 +441,18 @@ export default function QuestionForm({
             value={questionData.explanation}
             onChange={(event) => updateField("explanation", event.target.value)}
             rows={4}
-            placeholder="A concise 1–3 sentence explanation."
+            placeholder="A concise 1–2 sentence explanation. Or generate it with AI above."
             className="w-full rounded-2xl border border-gray-300 bg-gray-50 p-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-white"
           />
 
-          <div className="mb-1 mt-4 flex flex-wrap items-center justify-between gap-2">
-            <label className="block text-xs font-black uppercase tracking-wide text-gray-500">
-              Long explanation (shown on “Explain more”)
-            </label>
-            <button
-              type="button"
-              onClick={handleGenerateLong}
-              disabled={generating || !questionData.question || !questionData.answer}
-              className="rounded-full bg-purple-600 px-4 py-1.5 text-xs font-black text-white transition hover:bg-purple-700 active:scale-95 disabled:opacity-50"
-            >
-              {generating ? "✨ Generating…" : "✨ Generate with AI"}
-            </button>
-          </div>
-          {generateError && (
-            <div className="mb-2 rounded-xl border border-red-200 bg-red-50 p-2 text-xs font-bold text-red-700">
-              {generateError}
-            </div>
-          )}
+          <label className="mb-1 mt-4 block text-xs font-black uppercase tracking-wide text-gray-500">
+            Long explanation (shown on “Explain more”)
+          </label>
           <textarea
             value={questionData.explanationLong || ""}
             onChange={(event) => updateField("explanationLong", event.target.value)}
             rows={6}
-            placeholder="A deeper, all-around explanation of the concept. Leave blank to hide the “Explain more” button. Click “Generate with AI” to write it automatically."
+            placeholder="A deeper, all-around explanation of the concept. Leave blank to hide the “Explain more” button. Or generate it with AI above."
             className="w-full rounded-2xl border border-gray-300 bg-gray-50 p-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-white"
           />
 

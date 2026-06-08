@@ -784,11 +784,12 @@ JSON) or `500` on invalid JSON.
 
 ### `POST /api/admin/generate-explanation` — `generate-explanation/route.ts`
 Body `{ question, optionA..D, answer, explanation, subjectName, topicName }`. Asks OpenAI
-**`gpt-4o-mini`** (`json_object`, temp 0.3) to write a thorough **long explanation** (4–8 sentences:
-why the answer is right, why others are wrong, concept + intuition + exam traps) plus 3–6 lowercase
-**concept** tags. Returns `{ longExplanation, concepts }`. `503` if `OPENAI_API_KEY` unset. Used by
-the admin form's "✨ Generate with AI" button and the questions-list "✨ AI: Fill missing long
-explanations" bulk action. (Phase 2 will add book-grounded RAG to this prompt.)
+**`gpt-4o-mini`** (`json_object`, temp 0.3) to write **both** a SHORT explanation (1–2 sentences) and
+a THOROUGH long explanation (4–8 sentences: why the answer is right, why others are wrong, concept +
+intuition + exam traps) plus 3–6 lowercase **concept** tags. Returns `{ explanation, longExplanation,
+concepts }`. `503` if `OPENAI_API_KEY` unset. Used by the admin form's "✨ Generate with AI" button
+(fills short + long + concepts, all editable) and the questions-list bulk action (fills missing long
+for every question; fills short only when empty). (Phase 2 will add book-grounded RAG to this prompt.)
 
 ### `POST /api/admin/extract-questions` — `extract-questions/route.ts`
 Body `{ base64, mimeType }`. Extracts **all** MCQs from a document.
@@ -917,11 +918,14 @@ preview table (then AI-fill / import as above).
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-08** — AI now generates **both short + long** explanations (and concepts) in one call;
+  the admin form's "✨ Generate with AI" fills all three (editable), and the bulk action fills missing
+  longs + empty shorts.
 - **2026-06-08** — **AI long-explanation generation + Excel columns.** New
-  `/api/admin/generate-explanation` route (gpt-4o-mini) writes a long explanation + concept tags for
-  a question. Admin Edit form gained a "✨ Generate with AI" button; questions list gained a bulk
-  "✨ AI: Fill missing long explanations". Excel import/template now has **Long Explanation** +
-  **Concepts** columns. Needs `OPENAI_API_KEY` on Vercel (returns 503 until set).
+  `/api/admin/generate-explanation` route (gpt-4o-mini). Admin Edit form gained a "✨ Generate with
+  AI" button; questions list gained a bulk "✨ AI: Fill missing long explanations". Excel
+  import/template now has **Long Explanation** + **Concepts** columns. Needs `OPENAI_API_KEY` on
+  Vercel (returns 503 until set).
 - **2026-06-08** — **Phase 1 (richer explanations + related questions).** Added `explanationLong`,
   `concepts`, `relatedQuestionIds` to the `Question` model + DB (migrated live Supabase + schema.sql).
   Student explanation modal is now multi-panel: short → **"Explain more"** (long, scrollable, wider

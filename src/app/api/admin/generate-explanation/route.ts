@@ -44,19 +44,25 @@ B) ${optionB ?? ""}
 C) ${optionC ?? ""}
 D) ${optionD ?? ""}
 Correct answer: ${answer}
-${explanation ? `Existing short explanation: ${explanation}` : ""}
+${explanation ? `Existing short explanation (you may improve it): ${explanation}` : ""}
 
-Write a thorough "long explanation" that helps a student deeply understand the underlying concept — not just this question. Requirements:
-- 4 to 8 sentences (or short paragraphs).
-- Explain WHY the correct answer is correct, grounded in the concept.
-- Briefly explain why the other options are wrong / what they actually are.
-- Add the surrounding concept, a useful intuition or analogy, and any common exam trap.
-- Be accurate and exam-appropriate. Do NOT invent facts. Plain text (no markdown headers).
+Produce TWO explanations and concept tags:
 
-Also produce 3 to 6 lowercase "concepts" (short tag phrases) that capture the key ideas, used to link related questions.
+1. "explanation" — a SHORT explanation: 1 to 2 crisp sentences stating why the correct answer is
+   right. This is what students see first.
+
+2. "longExplanation" — a THOROUGH explanation (4 to 8 sentences) that builds deep understanding of
+   the concept, not just this question:
+   - why the correct answer is correct, grounded in the concept;
+   - briefly why each other option is wrong / what it actually is;
+   - the surrounding concept, a useful intuition or analogy, and a common exam trap.
+
+3. "concepts" — 3 to 6 lowercase tag phrases capturing the key ideas (used to link related questions).
+
+Rules: be accurate and exam-appropriate, do NOT invent facts, plain text (no markdown headers).
 
 Respond with valid JSON only, exactly:
-{"longExplanation":"...","concepts":["...","..."]}`;
+{"explanation":"...","longExplanation":"...","concepts":["...","..."]}`;
 
   const client = new OpenAI({ apiKey });
 
@@ -71,6 +77,8 @@ Respond with valid JSON only, exactly:
     const content = completion.choices[0]?.message?.content ?? "{}";
     const parsed = JSON.parse(content);
 
+    const shortExplanation =
+      typeof parsed.explanation === "string" ? parsed.explanation.trim() : "";
     const longExplanation =
       typeof parsed.longExplanation === "string" ? parsed.longExplanation.trim() : "";
     const concepts = Array.isArray(parsed.concepts)
@@ -79,14 +87,18 @@ Respond with valid JSON only, exactly:
           .filter(Boolean)
       : [];
 
-    if (!longExplanation) {
+    if (!longExplanation && !shortExplanation) {
       return NextResponse.json(
         { error: "AI returned an empty explanation.", raw: content },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ longExplanation, concepts });
+    return NextResponse.json({
+      explanation: shortExplanation,
+      longExplanation,
+      concepts,
+    });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json(

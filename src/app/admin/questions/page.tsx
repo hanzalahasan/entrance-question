@@ -155,6 +155,8 @@ function QuestionManagementContent() {
         }
         await updateQuestion({
           ...q,
+          // Keep an existing short explanation; only fill it if it's empty.
+          explanation: q.explanation?.trim() ? q.explanation : data.explanation ?? "",
           explanationLong: data.longExplanation,
           concepts:
             q.concepts && q.concepts.length > 0 ? q.concepts : data.concepts ?? [],
