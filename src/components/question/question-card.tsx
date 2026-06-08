@@ -21,6 +21,22 @@ export default function QuestionCard({ questions }: QuestionCardProps) {
   const [showExplanation, setShowExplanation] = useState(false);
   // Index of the option the keyboard (Up/Down arrows) is currently on.
   const [highlightedIndex, setHighlightedIndex] = useState(0);
+  // Brief "pressed" pulse on the nav buttons — fires for clicks AND arrow keys
+  // so navigation always feels responsive.
+  const [navPulse, setNavPulse] = useState<"next" | "prev" | null>(null);
+  const pulseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function pulseNav(direction: "next" | "prev") {
+    if (pulseTimer.current) clearTimeout(pulseTimer.current);
+    setNavPulse(direction);
+    pulseTimer.current = setTimeout(() => setNavPulse(null), 180);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (pulseTimer.current) clearTimeout(pulseTimer.current);
+    };
+  }, []);
 
   useEffect(() => {
     const firstQuestionId = getRandomQuestionId(questions);
@@ -114,6 +130,8 @@ export default function QuestionCard({ questions }: QuestionCardProps) {
   }
 
   function goNext() {
+    pulseNav("next");
+
     const nextQuestionId = getRandomQuestionId(questions, currentQuestion.id);
 
     if (!nextQuestionId) return;
@@ -128,6 +146,7 @@ export default function QuestionCard({ questions }: QuestionCardProps) {
   function goPrevious() {
     if (previousQuestionId === null || hasUsedPrevious) return;
 
+    pulseNav("prev");
     setCurrentQuestionId(previousQuestionId);
     setPreviousQuestionId(null);
     setHasUsedPrevious(true);
@@ -265,7 +284,9 @@ export default function QuestionCard({ questions }: QuestionCardProps) {
           <button
             onClick={goPrevious}
             disabled={!canGoPrevious}
-            className="justify-self-start rounded-2xl border border-gray-300 px-4 py-3 font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:text-white"
+            className={`justify-self-start rounded-2xl border border-gray-300 px-4 py-3 font-semibold text-gray-700 transition hover:bg-gray-50 active:scale-95 active:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:border-slate-600 dark:text-white dark:hover:bg-slate-700 dark:active:bg-slate-600 ${
+              navPulse === "prev" ? "scale-95 bg-gray-100 dark:bg-slate-600" : ""
+            }`}
           >
             Previous
           </button>
@@ -274,7 +295,7 @@ export default function QuestionCard({ questions }: QuestionCardProps) {
             {isAnswered && isCorrect && (
               <button
                 onClick={() => setShowExplanation(true)}
-                className="rounded-2xl bg-blue-600 px-4 py-3 font-semibold text-white"
+                className="rounded-2xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700 active:scale-95"
               >
                 Explanation
               </button>
@@ -283,7 +304,7 @@ export default function QuestionCard({ questions }: QuestionCardProps) {
             {isAnswered && !isCorrect && !showAnswer && (
               <button
                 onClick={handleRevealAnswer}
-                className="rounded-2xl bg-red-600 px-4 py-3 font-semibold text-white"
+                className="rounded-2xl bg-red-600 px-4 py-3 font-semibold text-white transition hover:bg-red-700 active:scale-95"
               >
                 Reveal
               </button>
@@ -292,7 +313,7 @@ export default function QuestionCard({ questions }: QuestionCardProps) {
             {isAnswered && !isCorrect && showAnswer && (
               <button
                 onClick={() => setShowExplanation(true)}
-                className="rounded-2xl bg-blue-600 px-4 py-3 font-semibold text-white"
+                className="rounded-2xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700 active:scale-95"
               >
                 Explanation
               </button>
@@ -301,7 +322,9 @@ export default function QuestionCard({ questions }: QuestionCardProps) {
 
           <button
             onClick={goNext}
-            className="justify-self-end rounded-2xl border border-gray-300 px-4 py-3 font-semibold text-gray-700 dark:border-slate-600 dark:text-white"
+            className={`justify-self-end rounded-2xl border border-gray-300 px-4 py-3 font-semibold text-gray-700 transition hover:bg-gray-50 active:scale-95 active:bg-gray-100 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700 dark:active:bg-slate-600 ${
+              navPulse === "next" ? "scale-95 bg-gray-100 dark:bg-slate-600" : ""
+            }`}
           >
             Next
           </button>

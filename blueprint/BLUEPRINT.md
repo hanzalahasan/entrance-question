@@ -9,7 +9,7 @@
 > time a feature is added or changed in the app, this file is updated to match — automatically,
 > without being asked.
 >
-> **Last synced with codebase:** 2026-06-08 (dark-mode toggle + keyboard navigation)
+> **Last synced with codebase:** 2026-06-08 (nav-button press feedback)
 
 ---
 
@@ -618,6 +618,10 @@ Flashcard practice flow over the filtered list:
     reveal; if correct or already revealed: go to next question.
   - **Escape** — close the explanation modal (when open; other keys are ignored while it's open).
   - Highlight resets to index 0 on every question change. Clicking an option also syncs the highlight.
+- **Nav button feedback:** Previous/Next have hover + `active:scale-95` (mouse) states, plus a brief
+  `navPulse` "pressed" flash (`scale-95` + tint, ~180ms) that fires from *both* clicks and the
+  ←/→ arrow keys — so keyboard navigation visibly registers on the button. The center action
+  buttons (Explanation/Reveal) also have hover + `active:scale-95`.
 
 ### `src/components/question/question-option.tsx` — `QuestionOption`
 - Props: `optionKey, value, imageUrl, type, status("default"|"correct"|"wrong"), disabled, onClick`.
@@ -846,6 +850,9 @@ preview table (then AI-fill / import as above).
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-08** — Added press feedback to the practice-card nav buttons: Previous/Next now have
+  hover + `active:scale-95` states and a `navPulse` flash that fires on both click and ←/→ keys
+  (keyboard navigation now visibly registers). Explanation/Reveal got hover + active states too.
 - **2026-06-08** — Dark mode reworked: switched from OS-only `prefers-color-scheme` to a
   **class-based toggle** (`<ThemeToggle>`, `.dark` on `<html>`, persisted in `localStorage`, no-flash
   init script in layout); **lightened the dark palette** one step (slate-950/900 → slate-900/800,
