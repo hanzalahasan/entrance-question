@@ -49,7 +49,8 @@ ${explanation ? `Existing short explanation (you may improve it): ${explanation}
 Produce TWO explanations and concept tags:
 
 1. "explanation" — a SHORT explanation: 1 to 2 crisp sentences stating why the correct answer is
-   right. This is what students see first.
+   right. This is what students see first. Bold the single most important term/phrase with **double
+   asterisks**.
 
 2. "longExplanation" — a THOROUGH explanation that builds deep understanding of the concept, not
    just this question. FORMAT IT AS 3 TO 5 SHORT PARAGRAPHS separated by a blank line (use "\n\n"
@@ -59,12 +60,13 @@ Produce TWO explanations and concept tags:
    - Para 3: briefly why each other option is wrong / what it actually is.
    - Para 4 (optional): related context, a formula, or a common exam trap to avoid.
    Keep each paragraph short (2–4 sentences) and easy to read. Add an example wherever it aids
-   understanding.
+   understanding. **Bold the most important keywords, key terms, and any critical sentence** with
+   double asterisks so students don't miss them — but don't over-bold (a few per paragraph at most).
 
 3. "concepts" — 3 to 6 lowercase tag phrases capturing the key ideas (used to link related questions).
 
-Rules: be accurate and exam-appropriate, do NOT invent facts, plain text (no markdown headers or
-bullet characters — just paragraphs separated by blank lines).
+Rules: be accurate and exam-appropriate, do NOT invent facts. Use **double asterisks** ONLY to bold
+important words/phrases — no other markdown (no headers, no bullets). Separate paragraphs with blank lines.
 
 Respond with valid JSON only, exactly:
 {"explanation":"...","longExplanation":"...","concepts":["...","..."]}`;

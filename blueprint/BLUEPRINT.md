@@ -9,7 +9,7 @@
 > time a feature is added or changed in the app, this file is updated to match — automatically,
 > without being asked.
 >
-> **Last synced with codebase:** 2026-06-08 (draggable + resizable explanation window)
+> **Last synced with codebase:** 2026-06-08 (bold key terms in explanations)
 
 ---
 
@@ -929,6 +929,8 @@ preview table (then AI-fill / import as above).
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-08** — Explanations now **bold the important keywords/sentences** (AI marks them with
+  `**...**`; `renderRich` in the card renders them as `<strong>` for both short + long).
 - **2026-06-08** — Explanation modal is now a **draggable + resizable floating window**: drag the
   header to move it anywhere, drag the bottom-right corner to resize freely; expand/shrink preset
   icon moved to the header **right**. Opens compact + scrollable so long explanations don't intimidate.

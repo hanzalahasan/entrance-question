@@ -17,6 +17,19 @@ type QuestionCardProps = {
   pool?: Question[];
 };
 
+// Render text with **important** parts bolded (lightweight markdown).
+function renderRich(text: string) {
+  return text.split(/(\*\*.+?\*\*)/g).map((part, i) =>
+    part.startsWith("**") && part.endsWith("**") ? (
+      <strong key={i} className="font-bold text-gray-900 dark:text-white">
+        {part.slice(2, -2)}
+      </strong>
+    ) : (
+      <span key={i}>{part}</span>
+    )
+  );
+}
+
 export default function QuestionCard({ questions, pool }: QuestionCardProps) {
   const [currentQuestionId, setCurrentQuestionId] = useState<number | null>(null);
   const [previousQuestionId, setPreviousQuestionId] = useState<number | null>(null);
@@ -562,7 +575,7 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
                   )}
 
                   <p className="leading-relaxed text-gray-700 dark:text-slate-300">
-                    {currentQuestion.explanation}
+                    {renderRich(currentQuestion.explanation)}
                   </p>
 
                   {showLong && hasLongExplanation && (
@@ -577,7 +590,7 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
                           .filter(Boolean)
                           .map((para, i) => (
                             <p key={i} className="whitespace-pre-line">
-                              {para}
+                              {renderRich(para)}
                             </p>
                           ))}
                       </div>
