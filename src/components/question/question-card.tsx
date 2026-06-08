@@ -59,8 +59,10 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
   >(null);
   const winRef = useRef<HTMLDivElement>(null);
   const winSizeRef = useRef<{ w: number; h: number } | null>(null);
-  // Remembered long-explanation window size (persisted) — reused on every open.
+  const winPosRef = useRef<{ x: number; y: number } | null>(null);
+  // Remembered window size + position (persisted) — reused on every open.
   const savedSizeRef = useRef<{ w: number; h: number } | null>(null);
+  const savedPosRef = useRef<{ x: number; y: number } | null>(null);
   const [explanationTab, setExplanationTab] = useState<"explanation" | "related">(
     "explanation"
   );
@@ -110,15 +112,18 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  // Load the remembered long-window size once.
+  // Load the remembered window size + position once.
   useEffect(() => {
     try {
-      const raw = localStorage.getItem("eq_expl_size");
-      if (raw) {
-        const s = JSON.parse(raw);
-        if (s && typeof s.w === "number" && typeof s.h === "number") {
-          savedSizeRef.current = s;
-        }
+      const rawSize = localStorage.getItem("eq_expl_size");
+      if (rawSize) {
+        const s = JSON.parse(rawSize);
+        if (s && typeof s.w === "number" && typeof s.h === "number") savedSizeRef.current = s;
+      }
+      const rawPos = localStorage.getItem("eq_expl_pos");
+      if (rawPos) {
+        const p = JSON.parse(rawPos);
+        if (p && typeof p.x === "number" && typeof p.y === "number") savedPosRef.current = p;
       }
     } catch {}
   }, []);
@@ -134,10 +139,12 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
       if (d.mode === "move") {
         const maxX = window.innerWidth - 60;
         const maxY = window.innerHeight - 60;
-        setWinPos({
+        const pos = {
           x: Math.min(Math.max(8 - d.origW + 80, d.origX + dx), maxX),
           y: Math.min(Math.max(0, d.origY + dy), maxY),
-        });
+        };
+        winPosRef.current = pos;
+        setWinPos(pos);
         return;
       }
 
@@ -164,11 +171,19 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
       const size = { w, h };
       winSizeRef.current = size;
       setWinSize(size);
+      winPosRef.current = { x, y };
       setWinPos({ x, y });
     }
 
     function onUp() {
       const d = dragRef.current;
+      // Remember the position after any drag (move or resize).
+      if (d && winPosRef.current) {
+        savedPosRef.current = winPosRef.current;
+        try {
+          localStorage.setItem("eq_expl_pos", JSON.stringify(winPosRef.current));
+        } catch {}
+      }
       if (d?.mode === "resize" && winSizeRef.current) {
         // Remember the user's chosen size for next time.
         savedSizeRef.current = winSizeRef.current;
@@ -206,12 +221,11 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
     setHighlightedIndex(0);
   }
 
-  // Centre a window of size w×h in the viewport.
-  function centredPos(w: number, h: number) {
-    return {
-      x: Math.max(12, Math.round((window.innerWidth - w) / 2)),
-      y: Math.max(12, Math.round((window.innerHeight - h) / 2)),
-    };
+  // Keep a window of size w×h within the viewport.
+  function clampPos(x: number, y: number, w: number, h: number) {
+    const maxX = Math.max(8, window.innerWidth - w - 8);
+    const maxY = Math.max(8, window.innerHeight - h - 8);
+    return { x: Math.min(Math.max(8, x), maxX), y: Math.min(Math.max(8, y), maxY) };
   }
   function defaultLongSize() {
     return {
@@ -221,7 +235,8 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
   }
 
   // Open the modal showing just the SHORT explanation: a small, movable
-  // (but not resizable) window sized to its content.
+  // (but not resizable) window. Opens at the remembered position, else lower
+  // on screen so the question stays visible.
   function openExplanation() {
     setShowExplanation(true);
     setShowLong(false);
@@ -230,19 +245,29 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
     setExplanationSeen(true);
     const w = Math.min(480, window.innerWidth - 24);
     setWinSize({ w, h: Math.round(window.innerHeight * 0.4) });
-    setWinPos({
-      x: Math.max(12, Math.round((window.innerWidth - w) / 2)),
-      y: Math.max(12, Math.round(window.innerHeight * 0.18)),
-    });
+    const base =
+      savedPosRef.current ?? {
+        x: Math.round((window.innerWidth - w) / 2),
+        y: Math.round(window.innerHeight * 0.32), // lower → keeps the question visible
+      };
+    const pos = {
+      x: Math.min(Math.max(8, base.x), Math.max(8, window.innerWidth - w - 8)),
+      y: Math.min(Math.max(8, base.y), window.innerHeight - 80),
+    };
+    setWinPos(pos);
+    winPosRef.current = pos;
   }
 
-  // Reveal the LONG explanation → switch to a resizable window at the
-  // remembered size (or the compact default), recentred.
+  // Reveal the LONG explanation → switch to the resizable window at the
+  // remembered size, opening from the window's CURRENT position (clamped).
   function openLong() {
     const size = savedSizeRef.current ?? defaultLongSize();
+    const base = winPos ?? savedPosRef.current ?? { x: 0, y: 0 };
+    const pos = clampPos(base.x, base.y, size.w, size.h);
     setWinSize(size);
     winSizeRef.current = size;
-    setWinPos(centredPos(size.w, size.h));
+    setWinPos(pos);
+    winPosRef.current = pos;
     setExpanded(false);
     setShowLong(true);
   }
@@ -279,20 +304,25 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
     };
   }
 
-  // Expand / shrink preset (long mode). Shrinking restores the remembered size.
+  // Expand / shrink preset (long mode). Keeps the window roughly where it is.
   function toggleWindowSize() {
+    const cur = winPos ?? { x: 12, y: 12 };
     if (!expanded) {
       const w = Math.min(1100, window.innerWidth - 24);
       const h = Math.min(Math.round(window.innerHeight * 0.9), window.innerHeight - 24);
       setWinSize({ w, h });
       winSizeRef.current = { w, h };
-      setWinPos(centredPos(w, h));
+      const pos = clampPos(cur.x, cur.y, w, h);
+      setWinPos(pos);
+      winPosRef.current = pos;
       setExpanded(true);
     } else {
       const size = savedSizeRef.current ?? defaultLongSize();
       setWinSize(size);
       winSizeRef.current = size;
-      setWinPos(centredPos(size.w, size.h));
+      const pos = clampPos(cur.x, cur.y, size.w, size.h);
+      setWinPos(pos);
+      winPosRef.current = pos;
       setExpanded(false);
     }
   }

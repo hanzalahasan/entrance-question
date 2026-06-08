@@ -9,7 +9,7 @@
 > time a feature is added or changed in the app, this file is updated to match — automatically,
 > without being asked.
 >
-> **Last synced with codebase:** 2026-06-08 (short=small/movable, long=resizable+remembered)
+> **Last synced with codebase:** 2026-06-08 (explanation window remembers position)
 
 ---
 
@@ -648,8 +648,10 @@ Flashcard practice flow over the filtered list:
     Two modes: **short** = small auto-height, movable only (no expand/resize); **long** (after
     "Explain more" → `openLong`) = opens compact+scrollable (~55vh), gains the expand/shrink preset
     icon (header right, `toggleWindowSize`) and is **resizable from every edge + corner** (8 handles
-    → `startResize(dir)`). The resized size is remembered (`savedSizeRef` +
-    `localStorage["eq_expl_size"]`) and reused on every later open until changed.
+    → `startResize(dir)`). The resized size AND position are remembered (`savedSizeRef`/`savedPosRef` +
+    `localStorage` `eq_expl_size`/`eq_expl_pos`) and reused on every later open until changed. The
+    short window defaults to a lower position so the question stays visible, and **Explain more
+    opens from the window's current position** (clamped) rather than recentring.
   - **"Related questions (n)"** button → appears **only after the long explanation is opened**
     (`showLong`); switches to the **related panel**: a list of 5–10 questions sharing this
     question's concept/topic (via `related-question-service`), each clickable.
@@ -929,6 +931,8 @@ preview table (then AI-fill / import as above).
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-08** — Explanation window now **remembers its position** too: short window opens lower
+  (question stays visible) and at the last-moved spot; **Explain more opens from that same spot**.
 - **2026-06-08** — Explanation window split into two modes: **short** = small + movable only;
   **long** (Explain more) = opens compact+scrollable, **resizable from any edge/corner** (8 handles),
   expand/shrink preset, and the chosen size is **remembered** across opens (localStorage).
