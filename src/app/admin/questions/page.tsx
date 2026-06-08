@@ -170,7 +170,7 @@ export default function QuestionManagementPage() {
   if (loading) {
     return (
       <AdminLayout title="Question Management">
-        <div className="rounded-3xl border border-gray-200 bg-white p-8 text-center text-sm font-bold text-gray-500 dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-3xl border border-gray-200 bg-white p-8 text-center text-sm font-bold text-gray-500 dark:border-slate-700 dark:bg-slate-800">
           Loading questions...
         </div>
       </AdminLayout>
@@ -230,7 +230,7 @@ export default function QuestionManagementPage() {
           onClearSelection={() => setSelectedIds([])}
         />
 
-        <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <div className="space-y-5">
             <QuestionToolbar
               search={search}

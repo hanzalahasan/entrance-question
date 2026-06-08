@@ -52,7 +52,7 @@ export default function AdminDashboardPage() {
         {cards.map((card) => (
           <div
             key={card.label}
-            className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+            className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800"
           >
             <p className="text-sm font-bold text-gray-500">{card.label}</p>
             <h2 className="mt-2 text-3xl font-black text-gray-900 dark:text-white">
@@ -62,7 +62,7 @@ export default function AdminDashboardPage() {
         ))}
       </div>
 
-      <div className="mt-6 rounded-3xl border border-dashed border-gray-300 bg-white/60 p-8 text-center dark:border-slate-700 dark:bg-slate-900/60">
+      <div className="mt-6 rounded-3xl border border-dashed border-gray-300 bg-white/60 p-8 text-center dark:border-slate-600 dark:bg-slate-800/60">
         <h2 className="text-xl font-black text-gray-900 dark:text-white">
           Dashboard Activity
         </h2>

@@ -463,7 +463,7 @@ export default function ExcelImportPage() {
       <div className="space-y-5">
 
         {/* ── Step 1: Source type ─────────────────────────────────── */}
-        <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <h2 className="mb-4 text-lg font-black text-gray-900 dark:text-white">Step 1 — Source Type</h2>
 
           <div className="grid gap-3 sm:grid-cols-2">
@@ -477,7 +477,7 @@ export default function ExcelImportPage() {
                 className={`rounded-2xl border-2 p-4 text-left transition ${
                   sourceType === opt.id
                     ? "border-blue-600 bg-blue-50 dark:bg-blue-950/30"
-                    : "border-gray-200 hover:border-gray-300 dark:border-slate-700 dark:hover:border-slate-600"
+                    : "border-gray-200 hover:border-gray-300 dark:border-slate-600 dark:hover:border-slate-600"
                 }`}
               >
                 <div className="mb-1 text-2xl">{opt.icon}</div>
@@ -490,7 +490,7 @@ export default function ExcelImportPage() {
           {sourceType === "excel" && (
             <button
               onClick={downloadTemplate}
-              className="mt-4 rounded-2xl border border-gray-300 px-5 py-2.5 text-sm font-black text-gray-700 transition hover:bg-gray-50 dark:border-slate-700 dark:text-white dark:hover:bg-slate-800"
+              className="mt-4 rounded-2xl border border-gray-300 px-5 py-2.5 text-sm font-black text-gray-700 transition hover:bg-gray-50 dark:border-slate-600 dark:text-white dark:hover:bg-slate-800"
             >
               Download Excel Template
             </button>
@@ -505,7 +505,7 @@ export default function ExcelImportPage() {
         </div>
 
         {/* ── Step 2: Year ────────────────────────────────────────── */}
-        <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <h2 className="mb-4 text-lg font-black text-gray-900 dark:text-white">Step 2 — Question Year</h2>
 
           <div className="grid gap-3 sm:grid-cols-2">
@@ -519,7 +519,7 @@ export default function ExcelImportPage() {
                 className={`rounded-2xl border-2 p-4 text-left transition ${
                   yearType === opt.id
                     ? "border-blue-600 bg-blue-50 dark:bg-blue-950/30"
-                    : "border-gray-200 hover:border-gray-300 dark:border-slate-700"
+                    : "border-gray-200 hover:border-gray-300 dark:border-slate-600"
                 }`}
               >
                 <p className="font-black text-gray-900 dark:text-white">{opt.label}</p>
@@ -534,7 +534,7 @@ export default function ExcelImportPage() {
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(e.target.value)}
-                className="h-11 rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                className="h-11 rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-white"
               >
                 {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
               </select>
@@ -546,7 +546,7 @@ export default function ExcelImportPage() {
         </div>
 
         {/* ── Step 3: Upload ──────────────────────────────────────── */}
-        <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <h2 className="mb-4 text-lg font-black text-gray-900 dark:text-white">
             Step 3 — Upload {sourceType === "excel" ? "Spreadsheet" : "PDF or Photo"}
           </h2>
@@ -561,7 +561,7 @@ export default function ExcelImportPage() {
                 ? "cursor-default border-purple-300 bg-purple-50 dark:bg-purple-950/20"
                 : dragOver
                 ? "border-blue-500 bg-blue-50 dark:bg-blue-950/20"
-                : "border-gray-300 hover:border-blue-400 hover:bg-gray-50 dark:border-slate-700 dark:hover:bg-slate-800"
+                : "border-gray-300 hover:border-blue-400 hover:bg-gray-50 dark:border-slate-600 dark:hover:bg-slate-800"
             }`}
           >
             {extracting ? (
@@ -602,7 +602,7 @@ export default function ExcelImportPage() {
 
         {/* ── Step 4: Preview, AI fill, Import ────────────────────── */}
         {rows.length > 0 && (
-          <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-black text-gray-900 dark:text-white">
@@ -662,7 +662,7 @@ export default function ExcelImportPage() {
                       key={row.rowIndex}
                       className={`rounded-2xl font-semibold ${
                         row.status === "valid"
-                          ? "bg-gray-50 dark:bg-slate-950"
+                          ? "bg-gray-50 dark:bg-slate-900"
                           : "bg-red-50 dark:bg-red-950/20"
                       }`}
                     >

@@ -102,7 +102,7 @@ export default function AdminSettingsPage() {
   if (loading) {
     return (
       <AdminLayout title="Master Settings">
-        <div className="rounded-3xl border border-gray-200 bg-white p-8 text-center text-sm font-bold text-gray-500 dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-3xl border border-gray-200 bg-white p-8 text-center text-sm font-bold text-gray-500 dark:border-slate-700 dark:bg-slate-800">
           Loading settings...
         </div>
       </AdminLayout>
@@ -122,7 +122,7 @@ export default function AdminSettingsPage() {
       )}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <div className="mb-5 flex items-center justify-between">
             <h2 className="text-lg font-black text-gray-900 dark:text-white">Subjects</h2>
             <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-black text-blue-700">
@@ -136,7 +136,7 @@ export default function AdminSettingsPage() {
               onChange={(e) => setNewSubject(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && addSubject()}
               placeholder="Add subject..."
-              className="h-12 flex-1 rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+              className="h-12 flex-1 rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-white"
             />
             <button onClick={addSubject} className="rounded-2xl bg-blue-600 px-5 font-black text-white">
               Add
@@ -145,7 +145,7 @@ export default function AdminSettingsPage() {
 
           <div className="space-y-3">
             {subjects.map((subject) => (
-              <div key={subject.id} className="flex items-center justify-between rounded-2xl border border-gray-200 p-4 dark:border-slate-700">
+              <div key={subject.id} className="flex items-center justify-between rounded-2xl border border-gray-200 p-4 dark:border-slate-600">
                 <div>
                   <h3 className="font-black text-gray-900 dark:text-white">{subject.name}</h3>
                   <p className="mt-1 text-xs font-semibold text-gray-500">{subject.slug}</p>
@@ -161,7 +161,7 @@ export default function AdminSettingsPage() {
           </div>
         </div>
 
-        <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <div className="mb-5 flex items-center justify-between">
             <h2 className="text-lg font-black text-gray-900 dark:text-white">Topics</h2>
             <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-black text-purple-700">
@@ -173,7 +173,7 @@ export default function AdminSettingsPage() {
             <select
               value={selectedSubjectId}
               onChange={(e) => setSelectedSubjectId(e.target.value)}
-              className="h-12 w-full rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+              className="h-12 w-full rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-white"
             >
               <option value="">Select Subject</option>
               {subjects.filter((s) => s.status === "active").map((s) => (
@@ -187,7 +187,7 @@ export default function AdminSettingsPage() {
                 onChange={(e) => setNewTopic(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addTopic()}
                 placeholder="Add topic..."
-                className="h-12 flex-1 rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                className="h-12 flex-1 rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-white"
               />
               <button onClick={addTopic} className="rounded-2xl bg-purple-600 px-5 font-black text-white">
                 Add
@@ -199,7 +199,7 @@ export default function AdminSettingsPage() {
             {topics.map((topic) => {
               const subject = subjects.find((s) => s.id === topic.subjectId);
               return (
-                <div key={topic.id} className="flex items-center justify-between rounded-2xl border border-gray-200 p-4 dark:border-slate-700">
+                <div key={topic.id} className="flex items-center justify-between rounded-2xl border border-gray-200 p-4 dark:border-slate-600">
                   <div>
                     <h3 className="font-black text-gray-900 dark:text-white">{topic.name}</h3>
                     <p className="mt-1 text-xs font-semibold text-gray-500">{subject?.name || "No subject"}</p>

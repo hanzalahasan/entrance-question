@@ -12,7 +12,7 @@ export default function AdminLayout({
   children,
 }: AdminLayoutProps) {
   return (
-    <main className="min-h-screen bg-gray-100 dark:bg-slate-950">
+    <main className="min-h-screen bg-gray-100 dark:bg-slate-900">
       <div className="flex">
         <AdminSidebar />
 

@@ -148,7 +148,7 @@ export default function QuestionForm({
 
   return (
     <div className="space-y-5">
-      <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <label className="mb-2 block text-sm font-black text-gray-700 dark:text-white">
           Question
         </label>
@@ -157,7 +157,7 @@ export default function QuestionForm({
           value={questionData.question}
           onChange={(event) => updateField("question", event.target.value)}
           rows={5}
-          className="w-full rounded-2xl border border-gray-300 bg-gray-50 p-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+          className="w-full rounded-2xl border border-gray-300 bg-gray-50 p-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-white"
         />
 
         <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -167,7 +167,7 @@ export default function QuestionForm({
               updateMediaField("questionImageUrl", event.target.value)
             }
             placeholder="Question image URL / diagram URL"
-            className="h-12 rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+            className="h-12 rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-white"
           />
 
           <input
@@ -178,7 +178,7 @@ export default function QuestionForm({
                 updateMediaField("questionImageUrl", url)
               )
             }
-            className="h-12 rounded-2xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+            className="h-12 rounded-2xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-900 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
           />
         </div>
 
@@ -201,7 +201,7 @@ export default function QuestionForm({
         )}
       </div>
 
-      <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <h2 className="mb-4 text-lg font-black text-gray-900 dark:text-white">
           Options & Correct Answer
         </h2>
@@ -210,7 +210,7 @@ export default function QuestionForm({
           {questionData.options.map((option, index) => (
             <div
               key={option.key}
-              className="rounded-2xl border border-gray-200 p-4 dark:border-slate-700"
+              className="rounded-2xl border border-gray-200 p-4 dark:border-slate-600"
             >
               <div className="mb-3 flex items-center gap-3">
                 <button
@@ -219,7 +219,7 @@ export default function QuestionForm({
                   className={`grid h-12 w-12 place-items-center rounded-2xl border text-sm font-black ${
                     questionData.answer === option.key
                       ? "border-green-600 bg-green-600 text-white"
-                      : "border-gray-300 bg-white text-gray-700 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                      : "border-gray-300 bg-white text-gray-700 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                   }`}
                 >
                   {option.key}
@@ -233,7 +233,7 @@ export default function QuestionForm({
                       event.target.value as "text" | "image" | "text_image"
                     )
                   }
-                  className="h-12 rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                  className="h-12 rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-white"
                 >
                   <option value="text">Text</option>
                   <option value="image">Image</option>
@@ -246,7 +246,7 @@ export default function QuestionForm({
                   value={option.value || ""}
                   onChange={(event) => updateOption(index, event.target.value)}
                   placeholder={`Option ${option.key} text`}
-                  className="mb-3 h-12 w-full rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                  className="mb-3 h-12 w-full rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-white"
                 />
               )}
 
@@ -258,7 +258,7 @@ export default function QuestionForm({
                       updateOptionImage(index, event.target.value)
                     }
                     placeholder={`Option ${option.key} image URL`}
-                    className="h-12 rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                    className="h-12 rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-white"
                   />
 
                   <input
@@ -269,7 +269,7 @@ export default function QuestionForm({
                         updateOptionImage(index, url)
                       )
                     }
-                    className="h-12 rounded-2xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                    className="h-12 rounded-2xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-900 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
                   />
                 </div>
               )}
@@ -297,7 +297,7 @@ export default function QuestionForm({
       </div>
 
       <div className="grid gap-5 md:grid-cols-2">
-        <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <h2 className="mb-4 text-lg font-black text-gray-900 dark:text-white">
             Question Details
           </h2>
@@ -306,7 +306,7 @@ export default function QuestionForm({
             <select
               value={questionData.subjectId}
               onChange={(event) => handleSubjectChange(Number(event.target.value))}
-              className="h-12 w-full rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+              className="h-12 w-full rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-white"
             >
               <option value={0}>Select Subject</option>
 
@@ -321,7 +321,7 @@ export default function QuestionForm({
               value={questionData.topicId}
               onChange={(event) => handleTopicChange(Number(event.target.value))}
               disabled={!questionData.subjectId}
-              className="h-12 w-full rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none disabled:opacity-50 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+              className="h-12 w-full rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none disabled:opacity-50 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
             >
               <option value={0}>Select Topic</option>
 
@@ -337,7 +337,7 @@ export default function QuestionForm({
               onChange={(event) =>
                 updateField("year", event.target.value || undefined)
               }
-              className="h-12 w-full rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+              className="h-12 w-full rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-white"
             >
               <option value="">No Year / Practice</option>
 
@@ -356,7 +356,7 @@ export default function QuestionForm({
                   event.target.value as Question["difficulty"]
                 )
               }
-              className="h-12 w-full rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+              className="h-12 w-full rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-white"
             >
               <option value="easy">Easy</option>
               <option value="medium">Medium</option>
@@ -365,7 +365,7 @@ export default function QuestionForm({
           </div>
         </div>
 
-        <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <h2 className="mb-4 text-lg font-black text-gray-900 dark:text-white">
             Explanation
           </h2>
@@ -374,7 +374,7 @@ export default function QuestionForm({
             value={questionData.explanation}
             onChange={(event) => updateField("explanation", event.target.value)}
             rows={8}
-            className="w-full rounded-2xl border border-gray-300 bg-gray-50 p-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+            className="w-full rounded-2xl border border-gray-300 bg-gray-50 p-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-white"
           />
 
           <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -384,7 +384,7 @@ export default function QuestionForm({
                 updateMediaField("explanationImageUrl", event.target.value)
               }
               placeholder="Explanation image URL"
-              className="h-12 rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+              className="h-12 rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-white"
             />
 
             <input
@@ -395,7 +395,7 @@ export default function QuestionForm({
                   updateMediaField("explanationImageUrl", url)
                 )
               }
-              className="h-12 rounded-2xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-900 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+              className="h-12 rounded-2xl border border-gray-300 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-900 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
             />
           </div>
 
@@ -423,7 +423,7 @@ export default function QuestionForm({
         <button
           onClick={onSaveDraft}
           disabled={saving}
-          className="rounded-2xl border border-gray-300 px-6 py-3 font-black text-gray-700 disabled:opacity-50 dark:border-slate-700 dark:text-white"
+          className="rounded-2xl border border-gray-300 px-6 py-3 font-black text-gray-700 disabled:opacity-50 dark:border-slate-600 dark:text-white"
         >
           {saving ? "Saving..." : "Save Draft"}
         </button>

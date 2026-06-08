@@ -21,7 +21,7 @@ export default function QuestionPagination({
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-black text-gray-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-white"
+          className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-black text-gray-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:text-white"
         >
           Previous
         </button>
@@ -29,7 +29,7 @@ export default function QuestionPagination({
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-black text-gray-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-white"
+          className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-black text-gray-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:text-white"
         >
           Next
         </button>

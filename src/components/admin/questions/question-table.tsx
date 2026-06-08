@@ -69,7 +69,7 @@ export default function QuestionTable({
                 className={`rounded-2xl text-sm font-semibold transition ${
                   isSelected
                     ? "bg-blue-50 dark:bg-blue-950/20"
-                    : "bg-gray-50 dark:bg-slate-950"
+                    : "bg-gray-50 dark:bg-slate-900"
                 } text-gray-700 dark:text-slate-300`}
               >
                 <td className="rounded-l-2xl p-4">
@@ -107,7 +107,7 @@ export default function QuestionTable({
                   <div className="flex gap-3">
                     <Link
                       href={`/admin/questions/${question.id}`}
-                      className="rounded-xl border border-gray-300 px-3 py-2 text-xs font-black text-gray-700 transition hover:bg-gray-100 dark:border-slate-700 dark:text-white dark:hover:bg-slate-800"
+                      className="rounded-xl border border-gray-300 px-3 py-2 text-xs font-black text-gray-700 transition hover:bg-gray-100 dark:border-slate-600 dark:text-white dark:hover:bg-slate-800"
                     >
                       Edit / Review
                     </Link>
@@ -136,7 +136,7 @@ export default function QuestionTable({
       </table>
 
       {safeQuestions.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-gray-300 p-8 text-center text-sm font-bold text-gray-500 dark:border-slate-700">
+        <div className="rounded-2xl border border-dashed border-gray-300 p-8 text-center text-sm font-bold text-gray-500 dark:border-slate-600">
           No questions found.
         </div>
       )}

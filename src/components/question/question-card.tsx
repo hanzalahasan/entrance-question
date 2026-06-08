@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Question } from "@/types/question";
 import QuestionOption from "./question-option";
 import {
@@ -19,6 +19,8 @@ export default function QuestionCard({ questions }: QuestionCardProps) {
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);
+  // Index of the option the keyboard (Up/Down arrows) is currently on.
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
 
   useEffect(() => {
     const firstQuestionId = getRandomQuestionId(questions);
@@ -33,6 +35,17 @@ export default function QuestionCard({ questions }: QuestionCardProps) {
     }
   }, [questions]);
 
+  // Keyboard navigation. The listener is bound once; it always calls the
+  // latest handler via a ref, so it sees fresh state/closures each render.
+  const keyHandlerRef = useRef<(event: KeyboardEvent) => void>(() => {});
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      keyHandlerRef.current(event);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   const foundQuestion = questions.find(
     (question) => question.id === currentQuestionId
   );
@@ -41,11 +54,12 @@ export default function QuestionCard({ questions }: QuestionCardProps) {
     setSelectedAnswer(null);
     setShowAnswer(false);
     setShowExplanation(false);
+    setHighlightedIndex(0);
   }
 
   if (questions.length === 0) {
     return (
-      <div className="w-full max-w-3xl rounded-3xl border border-gray-200 bg-white p-6 text-center font-semibold text-gray-700 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-white">
+      <div className="w-full max-w-3xl rounded-3xl border border-gray-200 bg-white p-6 text-center font-semibold text-gray-700 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white">
         No questions found. Please remove filters to see more questions.
       </div>
     );
@@ -53,7 +67,7 @@ export default function QuestionCard({ questions }: QuestionCardProps) {
 
   if (!foundQuestion) {
     return (
-      <div className="rounded-3xl bg-white p-6 text-center font-semibold dark:bg-slate-900 dark:text-white">
+      <div className="rounded-3xl bg-white p-6 text-center font-semibold dark:bg-slate-800 dark:text-white">
         Loading question...
       </div>
     );
@@ -122,9 +136,61 @@ export default function QuestionCard({ questions }: QuestionCardProps) {
 
   const canGoPrevious = previousQuestionId !== null && !hasUsedPrevious;
 
+  // Latest keyboard handler (re-assigned each render so closures stay fresh):
+  //  • Up / Down  → move the option highlight
+  //  • Left / Right → previous / next question
+  //  • Enter      → pick highlighted option, then reveal, then go next
+  //  • Escape     → close the explanation modal
+  keyHandlerRef.current = (event: KeyboardEvent) => {
+    const target = event.target as HTMLElement | null;
+    if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) {
+      return;
+    }
+
+    if (showExplanation) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setShowExplanation(false);
+      }
+      return;
+    }
+
+    switch (event.key) {
+      case "ArrowDown":
+        event.preventDefault();
+        setHighlightedIndex((index) =>
+          Math.min(currentQuestion.options.length - 1, index + 1)
+        );
+        break;
+      case "ArrowUp":
+        event.preventDefault();
+        setHighlightedIndex((index) => Math.max(0, index - 1));
+        break;
+      case "ArrowRight":
+        event.preventDefault();
+        goNext();
+        break;
+      case "ArrowLeft":
+        event.preventDefault();
+        if (canGoPrevious) goPrevious();
+        break;
+      case "Enter":
+        event.preventDefault();
+        if (!isAnswered) {
+          const option = currentQuestion.options[highlightedIndex];
+          if (option) handleSelectAnswer(option.key);
+        } else if (isCorrect || showAnswer) {
+          goNext();
+        } else {
+          handleRevealAnswer();
+        }
+        break;
+    }
+  };
+
   return (
     <>
-      <div className="w-full max-w-3xl rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 md:p-8">
+      <div className="w-full max-w-3xl rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800 md:p-8">
         <div className="mb-4 flex flex-wrap justify-center gap-2">
           <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
             {subjectLabel}
@@ -167,7 +233,7 @@ export default function QuestionCard({ questions }: QuestionCardProps) {
         </h2>
 
         <div className="space-y-3">
-          {currentQuestion.options.map((option) => (
+          {currentQuestion.options.map((option, index) => (
             <QuestionOption
               key={option.key}
               optionKey={option.key}
@@ -176,13 +242,17 @@ export default function QuestionCard({ questions }: QuestionCardProps) {
               type={option.type}
               status={getOptionStatus(option.key)}
               disabled={isLocked}
-              onClick={() => handleSelectAnswer(option.key)}
+              highlighted={!isAnswered && index === highlightedIndex}
+              onClick={() => {
+                setHighlightedIndex(index);
+                handleSelectAnswer(option.key);
+              }}
             />
           ))}
         </div>
 
         {isAnswered && (
-          <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-center font-semibold text-gray-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
+          <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-center font-semibold text-gray-700 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300">
             {isCorrect
               ? "✅ Correct answer."
               : showAnswer
@@ -195,7 +265,7 @@ export default function QuestionCard({ questions }: QuestionCardProps) {
           <button
             onClick={goPrevious}
             disabled={!canGoPrevious}
-            className="justify-self-start rounded-2xl border border-gray-300 px-4 py-3 font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-white"
+            className="justify-self-start rounded-2xl border border-gray-300 px-4 py-3 font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:text-white"
           >
             Previous
           </button>
@@ -231,7 +301,7 @@ export default function QuestionCard({ questions }: QuestionCardProps) {
 
           <button
             onClick={goNext}
-            className="justify-self-end rounded-2xl border border-gray-300 px-4 py-3 font-semibold text-gray-700 dark:border-slate-700 dark:text-white"
+            className="justify-self-end rounded-2xl border border-gray-300 px-4 py-3 font-semibold text-gray-700 dark:border-slate-600 dark:text-white"
           >
             Next
           </button>
@@ -240,7 +310,7 @@ export default function QuestionCard({ questions }: QuestionCardProps) {
 
       {showExplanation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="max-h-[80vh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-6 shadow-xl dark:bg-slate-900">
+          <div className="max-h-[80vh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-6 shadow-xl dark:bg-slate-800">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-xl font-bold text-gray-900 dark:text-white">
                 Explanation

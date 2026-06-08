@@ -100,7 +100,7 @@ export default function EditQuestionPage() {
   if (loading) {
     return (
       <AdminLayout title="Edit / Review Question">
-        <div className="rounded-3xl border border-gray-200 bg-white p-8 text-center text-sm font-bold text-gray-500 dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-3xl border border-gray-200 bg-white p-8 text-center text-sm font-bold text-gray-500 dark:border-slate-700 dark:bg-slate-800">
           Loading question...
         </div>
       </AdminLayout>
