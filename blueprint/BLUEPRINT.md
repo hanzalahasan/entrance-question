@@ -9,7 +9,7 @@
 > time a feature is added or changed in the app, this file is updated to match — automatically,
 > without being asked.
 >
-> **Last synced with codebase:** 2026-06-08 (AI long-explanation generation + Excel columns)
+> **Last synced with codebase:** 2026-06-08 (Delete questions feature)
 
 ---
 
@@ -925,6 +925,9 @@ preview table (then AI-fill / import as above).
 
 - **2026-06-08** — Added a **Delete** feature for questions: per-row Delete + Bulk Delete (both with
   a confirm dialog), backed by new `remove`/`bulkRemove` on `QuestionRepo` (localStorage + Supabase).
+- **2026-06-08** — Long explanations now render as **multiple paragraphs with examples** (AI prompted
+  for 3–5 short paras; modal splits on blank lines). **"Related questions" only appears after opening
+  the long explanation** ("Explain more").
 - **2026-06-08** — AI now generates **both short + long** explanations (and concepts) in one call;
   the admin form's "✨ Generate with AI" fills all three (editable), and the bulk action fills missing
   longs + empty shorts.
