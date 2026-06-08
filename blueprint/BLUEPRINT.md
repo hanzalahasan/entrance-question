@@ -9,7 +9,7 @@
 > time a feature is added or changed in the app, this file is updated to match — automatically,
 > without being asked.
 >
-> **Last synced with codebase:** 2026-06-08 (unified mouse/keyboard option highlight)
+> **Last synced with codebase:** 2026-06-08 (stepped Enter answer flow)
 
 ---
 
@@ -619,9 +619,13 @@ Flashcard practice flow over the filtered list:
     dark mode → `bg-slate-700` (clearly lighter than the slate-900 option / slate-800 card) + white
     text + blue border/ring, so it stays readable in dark mode.
   - **← / →** — previous / next question.
-  - **Enter** — if unanswered: select the highlighted option; if answered-wrong-and-unrevealed:
-    reveal; if correct or already revealed: go to next question.
-  - **Escape** — close the explanation modal (when open; other keys are ignored while it's open).
+  - **Enter** — steps through the answer flow. **Correct answer:** select → next question.
+    **Wrong answer:** (1) select → shows wrong, (2) reveal the correct answer, (3) open the
+    explanation, (4) close the explanation, (5) next question. The flow tracks `explanationSeen`
+    (reset per question; also set when the on-screen Explanation button is used) to know that an
+    Enter after the explanation was closed should advance rather than re-open it.
+  - **Escape** — close the explanation modal (Enter also closes it while open; other keys are
+    ignored while it's open).
   - Highlight resets to index 0 on every question change. Clicking an option also syncs the highlight.
 - **Nav button feedback:** Previous/Next have hover + `active:scale-95` (mouse) states, plus a brief
   `navPulse` "pressed" flash (`scale-95` + tint, ~180ms) that fires from *both* clicks and the
@@ -855,6 +859,9 @@ preview table (then AI-fill / import as above).
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-08** — Expanded the Enter-key answer flow for wrong answers: select → reveal → open
+  explanation → close explanation → next question (tracked via `explanationSeen`; Enter closes the
+  modal while open). Correct answers still go select → next.
 - **2026-06-08** — Unified the option highlight: mouse hover and keyboard arrows now drive the same
   `highlightedIndex` (hover sets it via `onMouseEnter`, so arrows continue from the hovered option).
   Removed the separate `hover:bg-blue-50` (which in dark mode turned the option near-white and hid

@@ -19,6 +19,9 @@ export default function QuestionCard({ questions }: QuestionCardProps) {
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);
+  // Whether the explanation has been opened at least once this question — lets
+  // the Enter flow know to advance (rather than re-open) after it's been closed.
+  const [explanationSeen, setExplanationSeen] = useState(false);
   // Index of the option the keyboard (Up/Down arrows) is currently on.
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   // Brief "pressed" pulse on the nav buttons — fires for clicks AND arrow keys
@@ -70,7 +73,13 @@ export default function QuestionCard({ questions }: QuestionCardProps) {
     setSelectedAnswer(null);
     setShowAnswer(false);
     setShowExplanation(false);
+    setExplanationSeen(false);
     setHighlightedIndex(0);
+  }
+
+  function openExplanation() {
+    setShowExplanation(true);
+    setExplanationSeen(true);
   }
 
   if (questions.length === 0) {
@@ -158,7 +167,7 @@ export default function QuestionCard({ questions }: QuestionCardProps) {
   // Latest keyboard handler (re-assigned each render so closures stay fresh):
   //  • Up / Down  → move the option highlight
   //  • Left / Right → previous / next question
-  //  • Enter      → pick highlighted option, then reveal, then go next
+  //  • Enter      → step through the answer flow (see below)
   //  • Escape     → close the explanation modal
   keyHandlerRef.current = (event: KeyboardEvent) => {
     const target = event.target as HTMLElement | null;
@@ -166,8 +175,9 @@ export default function QuestionCard({ questions }: QuestionCardProps) {
       return;
     }
 
+    // While the explanation is open, Enter or Escape closes it.
     if (showExplanation) {
-      if (event.key === "Escape") {
+      if (event.key === "Enter" || event.key === "Escape") {
         event.preventDefault();
         setShowExplanation(false);
       }
@@ -194,14 +204,25 @@ export default function QuestionCard({ questions }: QuestionCardProps) {
         if (canGoPrevious) goPrevious();
         break;
       case "Enter":
+        // Stepped Enter flow:
+        //  1) not answered      → select the highlighted option
+        //  correct              → next question
+        //  2) wrong, hidden     → reveal the correct answer
+        //  3) wrong, no expl yet → open the explanation
+        //  (Enter while open closes it — handled above)
+        //  4) wrong, expl seen  → next question
         event.preventDefault();
         if (!isAnswered) {
           const option = currentQuestion.options[highlightedIndex];
           if (option) handleSelectAnswer(option.key);
-        } else if (isCorrect || showAnswer) {
+        } else if (isCorrect) {
           goNext();
-        } else {
+        } else if (!showAnswer) {
           handleRevealAnswer();
+        } else if (!explanationSeen) {
+          openExplanation();
+        } else {
+          goNext();
         }
         break;
     }
@@ -295,7 +316,7 @@ export default function QuestionCard({ questions }: QuestionCardProps) {
           <div className="flex justify-center gap-2">
             {isAnswered && isCorrect && (
               <button
-                onClick={() => setShowExplanation(true)}
+                onClick={openExplanation}
                 className="rounded-2xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700 active:scale-95"
               >
                 Explanation
@@ -313,7 +334,7 @@ export default function QuestionCard({ questions }: QuestionCardProps) {
 
             {isAnswered && !isCorrect && showAnswer && (
               <button
-                onClick={() => setShowExplanation(true)}
+                onClick={openExplanation}
                 className="rounded-2xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700 active:scale-95"
               >
                 Explanation
