@@ -9,7 +9,7 @@
 > time a feature is added or changed in the app, this file is updated to match — automatically,
 > without being asked.
 >
-> **Last synced with codebase:** 2026-06-08 (bold key terms in explanations)
+> **Last synced with codebase:** 2026-06-08 (short=small/movable, long=resizable+remembered)
 
 ---
 
@@ -644,12 +644,12 @@ Flashcard practice flow over the filtered list:
     "In depth" section; the modal widens to `max-w-3xl`.
   - The long explanation is split on blank lines (`\n{2,}`) into spaced paragraphs (the AI is
     prompted to return 3–5 short paragraphs with examples).
-  - The modal is a **draggable + resizable floating window**: state `winPos {x,y}` + `winSize {w,h}`
-    (px, seeded centred/compact on open). **Drag the header** to move it (`startMove`), **drag the
-    bottom-right corner grip** to resize it freely (`startResize`); a global `pointermove/up` effect
-    drives both. The **expand/shrink icon is in the header on the RIGHT** (`Maximize2`/`Minimize2`,
-    `toggleWindowSize`) for a quick compact(~55vh)/large(~90vh) preset. Body scrolls; window opens
-    compact so long explanations never overwhelm.
+  - The modal is a **movable floating window** (`winPos`/`winSize`, drag the header via `startMove`).
+    Two modes: **short** = small auto-height, movable only (no expand/resize); **long** (after
+    "Explain more" → `openLong`) = opens compact+scrollable (~55vh), gains the expand/shrink preset
+    icon (header right, `toggleWindowSize`) and is **resizable from every edge + corner** (8 handles
+    → `startResize(dir)`). The resized size is remembered (`savedSizeRef` +
+    `localStorage["eq_expl_size"]`) and reused on every later open until changed.
   - **"Related questions (n)"** button → appears **only after the long explanation is opened**
     (`showLong`); switches to the **related panel**: a list of 5–10 questions sharing this
     question's concept/topic (via `related-question-service`), each clickable.
@@ -929,6 +929,9 @@ preview table (then AI-fill / import as above).
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-08** — Explanation window split into two modes: **short** = small + movable only;
+  **long** (Explain more) = opens compact+scrollable, **resizable from any edge/corner** (8 handles),
+  expand/shrink preset, and the chosen size is **remembered** across opens (localStorage).
 - **2026-06-08** — Explanations now **bold the important keywords/sentences** (AI marks them with
   `**...**`; `renderRich` in the card renders them as `<strong>` for both short + long).
 - **2026-06-08** — Explanation modal is now a **draggable + resizable floating window**: drag the

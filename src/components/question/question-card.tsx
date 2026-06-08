@@ -47,6 +47,7 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
   const dragRef = useRef<
     | {
         mode: "move" | "resize";
+        dir?: string; // for resize: any combo of n/s/e/w
         startX: number;
         startY: number;
         origX: number;
@@ -56,6 +57,10 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
       }
     | null
   >(null);
+  const winRef = useRef<HTMLDivElement>(null);
+  const winSizeRef = useRef<{ w: number; h: number } | null>(null);
+  // Remembered long-explanation window size (persisted) — reused on every open.
+  const savedSizeRef = useRef<{ w: number; h: number } | null>(null);
   const [explanationTab, setExplanationTab] = useState<"explanation" | "related">(
     "explanation"
   );
@@ -105,31 +110,76 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  // Drag-to-move (header) and drag-to-resize (corner) for the explanation window.
+  // Load the remembered long-window size once.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("eq_expl_size");
+      if (raw) {
+        const s = JSON.parse(raw);
+        if (s && typeof s.w === "number" && typeof s.h === "number") {
+          savedSizeRef.current = s;
+        }
+      }
+    } catch {}
+  }, []);
+
+  // Drag-to-move (header) and drag-to-resize (any edge/corner).
   useEffect(() => {
     function onMove(e: PointerEvent) {
       const d = dragRef.current;
       if (!d) return;
       const dx = e.clientX - d.startX;
       const dy = e.clientY - d.startY;
+
       if (d.mode === "move") {
-        const w = d.origW;
         const maxX = window.innerWidth - 60;
         const maxY = window.innerHeight - 60;
         setWinPos({
-          x: Math.min(Math.max(8 - w + 80, d.origX + dx), maxX),
+          x: Math.min(Math.max(8 - d.origW + 80, d.origX + dx), maxX),
           y: Math.min(Math.max(0, d.origY + dy), maxY),
         });
-      } else {
-        setWinSize({
-          w: Math.min(Math.max(320, d.origW + dx), window.innerWidth - 16),
-          h: Math.min(Math.max(220, d.origH + dy), window.innerHeight - 16),
-        });
+        return;
       }
+
+      // Resize from whichever edges/corner the grip represents.
+      const dir = d.dir || "se";
+      const MINW = 320,
+        MINH = 200;
+      const maxW = window.innerWidth - 16;
+      const maxH = window.innerHeight - 16;
+      let w = d.origW,
+        h = d.origH,
+        x = d.origX,
+        y = d.origY;
+      if (dir.includes("e")) w = Math.min(maxW, Math.max(MINW, d.origW + dx));
+      if (dir.includes("w")) {
+        w = Math.min(maxW, Math.max(MINW, d.origW - dx));
+        x = d.origX + (d.origW - w);
+      }
+      if (dir.includes("s")) h = Math.min(maxH, Math.max(MINH, d.origH + dy));
+      if (dir.includes("n")) {
+        h = Math.min(maxH, Math.max(MINH, d.origH - dy));
+        y = d.origY + (d.origH - h);
+      }
+      const size = { w, h };
+      winSizeRef.current = size;
+      setWinSize(size);
+      setWinPos({ x, y });
     }
+
     function onUp() {
+      const d = dragRef.current;
+      if (d?.mode === "resize" && winSizeRef.current) {
+        // Remember the user's chosen size for next time.
+        savedSizeRef.current = winSizeRef.current;
+        try {
+          localStorage.setItem("eq_expl_size", JSON.stringify(winSizeRef.current));
+        } catch {}
+        setExpanded(false);
+      }
       dragRef.current = null;
     }
+
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
     return () => {
@@ -156,53 +206,70 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
     setHighlightedIndex(0);
   }
 
-  // Default window size/position, centred. Called when the modal opens.
-  function defaultWindow(big = false) {
-    const w = Math.min(big ? 900 : 640, window.innerWidth - 24);
-    const h = Math.min(
-      Math.round(window.innerHeight * (big ? 0.9 : 0.55)),
-      window.innerHeight - 24
-    );
+  // Centre a window of size w×h in the viewport.
+  function centredPos(w: number, h: number) {
     return {
-      size: { w, h },
-      pos: {
-        x: Math.max(12, Math.round((window.innerWidth - w) / 2)),
-        y: Math.max(12, Math.round((window.innerHeight - h) / 2)),
-      },
+      x: Math.max(12, Math.round((window.innerWidth - w) / 2)),
+      y: Math.max(12, Math.round((window.innerHeight - h) / 2)),
+    };
+  }
+  function defaultLongSize() {
+    return {
+      w: Math.min(640, window.innerWidth - 24),
+      h: Math.min(Math.round(window.innerHeight * 0.55), window.innerHeight - 24),
     };
   }
 
+  // Open the modal showing just the SHORT explanation: a small, movable
+  // (but not resizable) window sized to its content.
   function openExplanation() {
     setShowExplanation(true);
     setShowLong(false);
     setExpanded(false);
     setExplanationTab("explanation");
     setExplanationSeen(true);
-    const d = defaultWindow(false);
-    setWinSize(d.size);
-    setWinPos(d.pos);
+    const w = Math.min(480, window.innerWidth - 24);
+    setWinSize({ w, h: Math.round(window.innerHeight * 0.4) });
+    setWinPos({
+      x: Math.max(12, Math.round((window.innerWidth - w) / 2)),
+      y: Math.max(12, Math.round(window.innerHeight * 0.18)),
+    });
   }
 
-  // Header drag → move the window.
+  // Reveal the LONG explanation → switch to a resizable window at the
+  // remembered size (or the compact default), recentred.
+  function openLong() {
+    const size = savedSizeRef.current ?? defaultLongSize();
+    setWinSize(size);
+    winSizeRef.current = size;
+    setWinPos(centredPos(size.w, size.h));
+    setExpanded(false);
+    setShowLong(true);
+  }
+
+  // Header drag → move the window (works in both modes).
   function startMove(event: React.PointerEvent) {
-    if (!winPos || !winSize) return;
+    if (!winPos) return;
+    const rect = winRef.current?.getBoundingClientRect();
     dragRef.current = {
       mode: "move",
       startX: event.clientX,
       startY: event.clientY,
       origX: winPos.x,
       origY: winPos.y,
-      origW: winSize.w,
-      origH: winSize.h,
+      origW: rect?.width ?? winSize?.w ?? 480,
+      origH: rect?.height ?? winSize?.h ?? 300,
     };
   }
 
-  // Corner grip drag → resize the window.
-  function startResize(event: React.PointerEvent) {
+  // Edge / corner grip drag → resize (long mode only).
+  function startResize(event: React.PointerEvent, dir: string) {
     if (!winPos || !winSize) return;
     event.stopPropagation();
+    event.preventDefault();
     dragRef.current = {
       mode: "resize",
+      dir,
       startX: event.clientX,
       startY: event.clientY,
       origX: winPos.x,
@@ -212,13 +279,22 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
     };
   }
 
-  // Expand / shrink preset (recentres).
+  // Expand / shrink preset (long mode). Shrinking restores the remembered size.
   function toggleWindowSize() {
-    const next = !expanded;
-    setExpanded(next);
-    const d = defaultWindow(next);
-    setWinSize(d.size);
-    setWinPos(d.pos);
+    if (!expanded) {
+      const w = Math.min(1100, window.innerWidth - 24);
+      const h = Math.min(Math.round(window.innerHeight * 0.9), window.innerHeight - 24);
+      setWinSize({ w, h });
+      winSizeRef.current = { w, h };
+      setWinPos(centredPos(w, h));
+      setExpanded(true);
+    } else {
+      const size = savedSizeRef.current ?? defaultLongSize();
+      setWinSize(size);
+      winSizeRef.current = size;
+      setWinPos(centredPos(size.w, size.h));
+      setExpanded(false);
+    }
   }
 
   // Jump to a related question (it may be outside the active filter — that's
@@ -512,11 +588,39 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
 
       {showExplanation && winPos && winSize && (
         <div className="fixed inset-0 z-50 bg-black/50">
-          {/* Draggable (header) + resizable (corner grip) floating window. */}
+          {/* Movable always. Short = small, auto-height. Long = sized + resizable. */}
           <div
-            style={{ left: winPos.x, top: winPos.y, width: winSize.w, height: winSize.h }}
-            className="absolute flex flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-slate-800"
+            ref={winRef}
+            style={
+              showLong
+                ? { left: winPos.x, top: winPos.y, width: winSize.w, height: winSize.h }
+                : { left: winPos.x, top: winPos.y, width: winSize.w }
+            }
+            className={`absolute flex flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-slate-800 ${
+              showLong ? "" : "max-h-[60vh]"
+            }`}
           >
+            {/* Resize handles — every edge + corner (long explanation only) */}
+            {showLong &&
+              (
+                [
+                  ["n", "left-0 right-0 top-0 h-1.5 cursor-ns-resize"],
+                  ["s", "left-0 right-0 bottom-0 h-1.5 cursor-ns-resize"],
+                  ["e", "top-0 bottom-0 right-0 w-1.5 cursor-ew-resize"],
+                  ["w", "top-0 bottom-0 left-0 w-1.5 cursor-ew-resize"],
+                  ["nw", "top-0 left-0 h-3.5 w-3.5 cursor-nwse-resize"],
+                  ["ne", "top-0 right-0 h-3.5 w-3.5 cursor-nesw-resize"],
+                  ["sw", "bottom-0 left-0 h-3.5 w-3.5 cursor-nesw-resize"],
+                  ["se", "bottom-0 right-0 h-3.5 w-3.5 cursor-nwse-resize"],
+                ] as const
+              ).map(([dir, cls]) => (
+                <div
+                  key={dir}
+                  onPointerDown={(e) => startResize(e, dir)}
+                  className={`absolute z-30 ${cls}`}
+                />
+              ))}
+
             {/* Header — drag handle */}
             <div
               onPointerDown={startMove}
@@ -537,20 +641,22 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
               )}
 
               <div className="flex items-center gap-2">
-                {/* Expand / shrink — on the RIGHT */}
-                <button
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={toggleWindowSize}
-                  title={expanded ? "Shrink window" : "Expand window"}
-                  aria-label={expanded ? "Shrink window" : "Expand window"}
-                  className="grid h-9 w-9 cursor-pointer place-items-center rounded-full border border-gray-300 text-gray-700 transition hover:bg-gray-50 active:scale-95 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700"
-                >
-                  {expanded ? (
-                    <Minimize2 className="h-4 w-4" />
-                  ) : (
-                    <Maximize2 className="h-4 w-4" />
-                  )}
-                </button>
+                {/* Expand / shrink — only for the long explanation, on the RIGHT */}
+                {showLong && (
+                  <button
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={toggleWindowSize}
+                    title={expanded ? "Shrink window" : "Expand window"}
+                    aria-label={expanded ? "Shrink window" : "Expand window"}
+                    className="grid h-9 w-9 cursor-pointer place-items-center rounded-full border border-gray-300 text-gray-700 transition hover:bg-gray-50 active:scale-95 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700"
+                  >
+                    {expanded ? (
+                      <Minimize2 className="h-4 w-4" />
+                    ) : (
+                      <Maximize2 className="h-4 w-4" />
+                    )}
+                  </button>
+                )}
 
                 <button
                   onPointerDown={(e) => e.stopPropagation()}
@@ -636,7 +742,7 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
               <div className="flex flex-wrap gap-2 border-t border-gray-200 p-4 dark:border-slate-700">
                 {hasLongExplanation && !showLong && (
                   <button
-                    onClick={() => setShowLong(true)}
+                    onClick={openLong}
                     className="rounded-2xl bg-blue-600 px-5 py-3 font-black text-white transition hover:bg-blue-700 active:scale-95"
                   >
                     Explain more ↓
@@ -653,15 +759,6 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
                 )}
               </div>
             )}
-
-            {/* Resize grip — bottom-right corner */}
-            <div
-              onPointerDown={startResize}
-              title="Drag to resize"
-              className="absolute bottom-0 right-0 z-10 h-7 w-7 cursor-nwse-resize"
-            >
-              <div className="absolute bottom-2 right-2 h-2.5 w-2.5 border-b-2 border-r-2 border-gray-400 dark:border-slate-500" />
-            </div>
           </div>
         </div>
       )}
