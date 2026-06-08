@@ -9,7 +9,7 @@
 > time a feature is added or changed in the app, this file is updated to match — automatically,
 > without being asked.
 >
-> **Last synced with codebase:** 2026-06-08 (stepped Enter answer flow)
+> **Last synced with codebase:** 2026-06-08 (Supabase backend wired + draft fixes)
 
 ---
 
@@ -416,9 +416,20 @@ export type QuestionFilters = {
 
 ## 8. Data layer & persistence
 
-**Core abstraction: `src/lib/repository.ts`.** This is the one file you swap to change backends.
-It exports two interfaces and their current `localStorage` implementations, then exports the
-active instances:
+**Backend selection is automatic.** `src/lib/supabase.ts` exports `isSupabaseConfigured` (true when
+`NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` are set and not placeholders) and a
+`supabase` client (or `null`). `src/lib/repository.ts` exports `questionRepo`/`masterRepo` that are
+the **Supabase** implementations when configured (shared PostgreSQL — admin-added/imported questions
+reach every student on every device) and the **localStorage** implementations otherwise (per-browser
+seed data, zero setup). Both implement the same interfaces, so nothing else in the app changes.
+
+The Supabase repo maps snake_case columns ⇄ camelCase fields; `insert`/`replaceAll` use
+`upsert(..., { onConflict: "id" })` (non-destructive — never deletes other rows), preserving the
+app's existing client-generated-id model. `getAll` orders by `created_at desc`.
+
+**Core abstraction: `src/lib/repository.ts`.** This is the one file that decides the backend.
+It exports two interfaces with BOTH a `localStorage` and a Supabase implementation, then exports the
+active instances chosen by `isSupabaseConfigured`:
 
 ```ts
 export interface QuestionRepo {
@@ -677,11 +688,13 @@ Question management list.
 - **Tabs:** "Active (n)" = published+draft, "Unpublished (n)". `QUESTIONS_PER_PAGE = 10`.
 - **Filters:** search (question text contains), subject, year, difficulty (selects populated from
   data). Changing any resets to page 1 and clears selection.
-- **`<QuestionTable>`**: checkbox select (per-row + select-all-on-page), columns Question / Subject /
-  Topic / Year / Difficulty / Duplicate (color-coded badge) / Action. Action = "Edit / Review" link
-  + Publish or Unpublish (per tab).
-- **`<QuestionBulkActions>`**: appears when selection > 0; bulk publish (Unpublished tab) or bulk
-  unpublish (Active tab) + clear selection.
+- **`<QuestionTable>`**: checkbox select (per-row + select-all-on-page), columns Question / **Status**
+  (Published=green / Draft=yellow / Unpublished=grey badge) / Subject / Topic / Year / Difficulty /
+  Duplicate (color-coded badge) / Action. Action = "Edit / Review" link + a **status-based** button:
+  Published rows show "Unpublish", any non-published row (draft/unpublished) shows "Publish". (This
+  is per-row by status, NOT per-tab — so drafts in the Active tab can be published directly.)
+- **`<QuestionBulkActions>`**: appears when selection > 0; always offers **Bulk Publish**, plus
+  **Bulk Unpublish** in the Active tab (which mixes drafts + published); + clear selection.
 - Unpublish (single or bulk) goes through `<ConfirmDialog>`. Publish is immediate.
 - **"Recheck Duplicates"** button → `recheckAllDuplicates(all)` then persist.
 - `<QuestionPagination>` Prev/Next (hidden when ≤1 page).
@@ -859,6 +872,14 @@ preview table (then AI-fill / import as above).
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-08** — Wired the **Supabase (PostgreSQL/SQL) backend**: added `src/lib/supabase.ts`
+  (`isSupabaseConfigured` + client) and full Supabase implementations of `QuestionRepo`/`MasterRepo`
+  in `repository.ts` (snake_case⇄camelCase mappers, upsert-by-id). The app now uses the shared DB
+  automatically when `NEXT_PUBLIC_SUPABASE_*` env vars are set, else falls back to localStorage.
+  This makes admin-added/imported questions visible to all students across devices.
+  **Draft fixes:** added a Status (Published/Draft/Unpublished) column to the admin question table;
+  made the row action status-based so drafts can be **Published directly from the list** (previously
+  every Active-tab row only offered Unpublish); Bulk Publish now available in the Active tab too.
 - **2026-06-08** — Expanded the Enter-key answer flow for wrong answers: select → reveal → open
   explanation → close explanation → next question (tracked via `explanationSeen`; Enter closes the
   modal while open). Correct answers still go select → next.

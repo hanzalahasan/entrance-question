@@ -245,7 +245,6 @@ export default function QuestionManagementPage() {
             />
             <QuestionTable
               questions={paginatedQuestions}
-              activeTab={activeTab}
               selectedIds={selectedIds}
               onSelect={handleSelect}
               onSelectAll={handleSelectAll}

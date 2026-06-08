@@ -24,19 +24,21 @@ export default function QuestionBulkActions({
       </p>
 
       <div className="flex flex-wrap gap-2">
-        {activeTab === "active" ? (
+        {/* Active tab mixes drafts + published, so offer both. Unpublished
+            tab only needs Publish. */}
+        <button
+          onClick={onBulkPublish}
+          className="rounded-xl px-4 py-2 text-sm font-black text-green-600 transition hover:bg-green-100"
+        >
+          Bulk Publish
+        </button>
+
+        {activeTab === "active" && (
           <button
             onClick={onBulkUnpublish}
             className="rounded-xl px-4 py-2 text-sm font-black text-red-600 transition hover:bg-red-100"
           >
             Bulk Unpublish
-          </button>
-        ) : (
-          <button
-            onClick={onBulkPublish}
-            className="rounded-xl px-4 py-2 text-sm font-black text-green-600 transition hover:bg-green-100"
-          >
-            Bulk Publish
           </button>
         )}
 

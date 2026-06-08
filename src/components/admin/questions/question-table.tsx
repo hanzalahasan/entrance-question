@@ -5,7 +5,6 @@ import type { Question } from "@/types/question";
 
 type QuestionTableProps = {
   questions?: Question[];
-  activeTab: "active" | "unpublished";
   selectedIds?: number[];
   onSelect: (id: number) => void;
   onSelectAll: () => void;
@@ -21,7 +20,6 @@ function getDuplicateLabel(status?: Question["duplicateCheckStatus"]) {
 
 export default function QuestionTable({
   questions,
-  activeTab,
   selectedIds,
   onSelect,
   onSelectAll,
@@ -50,6 +48,7 @@ export default function QuestionTable({
             </th>
 
             <th>Question</th>
+            <th>Status</th>
             <th>Subject</th>
             <th>Topic</th>
             <th>Year</th>
@@ -82,6 +81,25 @@ export default function QuestionTable({
                 </td>
 
                 <td className="max-w-md p-4">{question.question}</td>
+
+                <td className="p-4">
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-black ${
+                      question.status === "published"
+                        ? "bg-green-100 text-green-700"
+                        : question.status === "draft"
+                          ? "bg-yellow-100 text-yellow-700"
+                          : "bg-gray-200 text-gray-600"
+                    }`}
+                  >
+                    {question.status === "published"
+                      ? "Published"
+                      : question.status === "draft"
+                        ? "Draft"
+                        : "Unpublished"}
+                  </span>
+                </td>
+
                 <td className="p-4">{question.subjectName || "-"}</td>
                 <td className="p-4">{question.topicName || "-"}</td>
                 <td className="p-4">{question.year || "-"}</td>
@@ -112,7 +130,7 @@ export default function QuestionTable({
                       Edit / Review
                     </Link>
 
-                    {activeTab === "active" ? (
+                    {question.status === "published" ? (
                       <button
                         onClick={() => onUnpublish(question.id)}
                         className="rounded-xl px-3 py-2 text-xs font-black text-red-500 transition hover:bg-red-50 hover:text-red-700"
