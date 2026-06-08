@@ -9,7 +9,7 @@
 > time a feature is added or changed in the app, this file is updated to match — automatically,
 > without being asked.
 >
-> **Last synced with codebase:** 2026-06-08 (Phase 1: long explanation + related questions)
+> **Last synced with codebase:** 2026-06-08 (AI long-explanation generation + Excel columns)
 
 ---
 
@@ -782,6 +782,14 @@ list), `topic` (exact match, "Subject: Topic" format), `explanation` (1–3 sent
 **`gpt-4o-mini`**, `response_format: json_object`, `temperature: 0.2`. Returns `{ filled }` (parsed
 JSON) or `500` on invalid JSON.
 
+### `POST /api/admin/generate-explanation` — `generate-explanation/route.ts`
+Body `{ question, optionA..D, answer, explanation, subjectName, topicName }`. Asks OpenAI
+**`gpt-4o-mini`** (`json_object`, temp 0.3) to write a thorough **long explanation** (4–8 sentences:
+why the answer is right, why others are wrong, concept + intuition + exam traps) plus 3–6 lowercase
+**concept** tags. Returns `{ longExplanation, concepts }`. `503` if `OPENAI_API_KEY` unset. Used by
+the admin form's "✨ Generate with AI" button and the questions-list "✨ AI: Fill missing long
+explanations" bulk action. (Phase 2 will add book-grounded RAG to this prompt.)
+
 ### `POST /api/admin/extract-questions` — `extract-questions/route.ts`
 Body `{ base64, mimeType }`. Extracts **all** MCQs from a document.
 - **`EXTRACT_PROMPT`** asks for an array of `{question, optionA..D, answer(""|A/B/C/D), explanation("")}`,
@@ -851,7 +859,8 @@ A 4-step wizard (`src/app/admin/import/page.tsx`):
   (green) buttons.
 
 **Excel columns (template order):** `Question, Option A, Option B, Option C, Option D, Answer,
-Subject, Topic, Year, Explanation, Difficulty`. Template includes 2 example rows. Parsed with
+Subject, Topic, Year, Explanation, Long Explanation, Concepts, Difficulty`. `Concepts` is a
+comma-separated list. Template includes 2 example rows. Parsed with
 `XLSX.read(..., {type:"binary"})` → `sheet_to_json({defval:"", raw:false})`.
 
 **Row validation (`validateRow`):** question + all 4 options required; answer (if present) ∈ A/B/C/D;
@@ -908,6 +917,11 @@ preview table (then AI-fill / import as above).
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-08** — **AI long-explanation generation + Excel columns.** New
+  `/api/admin/generate-explanation` route (gpt-4o-mini) writes a long explanation + concept tags for
+  a question. Admin Edit form gained a "✨ Generate with AI" button; questions list gained a bulk
+  "✨ AI: Fill missing long explanations". Excel import/template now has **Long Explanation** +
+  **Concepts** columns. Needs `OPENAI_API_KEY` on Vercel (returns 503 until set).
 - **2026-06-08** — **Phase 1 (richer explanations + related questions).** Added `explanationLong`,
   `concepts`, `relatedQuestionIds` to the `Question` model + DB (migrated live Supabase + schema.sql).
   Student explanation modal is now multi-panel: short → **"Explain more"** (long, scrollable, wider

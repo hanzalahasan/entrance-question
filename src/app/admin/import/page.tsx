@@ -27,6 +27,8 @@ type ParsedRow = {
   topicName: string;
   year: string;
   explanation: string;
+  explanationLong: string;
+  concepts: string[];
   difficulty: string;
   status: RowStatus;
   errors: string[];
@@ -41,7 +43,8 @@ const YEARS = Array.from({ length: 17 }, (_, i) => String(2026 - i));
 
 const EXCEL_HEADERS = [
   "Question", "Option A", "Option B", "Option C", "Option D",
-  "Answer", "Subject", "Topic", "Year", "Explanation", "Difficulty",
+  "Answer", "Subject", "Topic", "Year", "Explanation", "Long Explanation",
+  "Concepts", "Difficulty",
 ];
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -65,6 +68,8 @@ function validateRow(
   const topicName   = get("Topic");
   const year        = yearOverride || get("Year");
   const explanation = get("Explanation");
+  const explanationLong = get("Long Explanation");
+  const concepts    = get("Concepts").split(",").map((c) => c.trim()).filter(Boolean);
   const difficulty  = get("Difficulty").toLowerCase() || "medium";
 
   const errors: string[] = [];
@@ -97,7 +102,7 @@ function validateRow(
   return {
     rowIndex: idx,
     question, optionA, optionB, optionC, optionD,
-    answer, subjectName, topicName, year, explanation, difficulty,
+    answer, subjectName, topicName, year, explanation, explanationLong, concepts, difficulty,
     status: errors.length === 0 ? "valid" : "error",
     errors,
     subjectId: subject?.id,
@@ -122,6 +127,8 @@ function rowToQuestion(row: ParsedRow): Question {
     ],
     answer: row.answer,
     explanation: row.explanation,
+    explanationLong: row.explanationLong,
+    concepts: row.concepts,
     subjectId: row.subjectId!,
     topicId: row.topicId!,
     subjectName: row.subjectName,
@@ -193,10 +200,10 @@ export default function ExcelImportPage() {
   function downloadTemplate() {
     const ws = XLSX.utils.aoa_to_sheet([
       EXCEL_HEADERS,
-      ["What is the SI unit of Force?", "Joule","Newton","Pascal","Watt","B","Physics","Mechanics","2024","Force is measured in Newton (N).","easy"],
-      ["Which particle determines atomic number?","Electron","Neutron","Proton","Nucleus","","","","","","medium"],
+      ["What is the SI unit of Force?", "Joule","Newton","Pascal","Watt","B","Physics","Mechanics","2024","Force is measured in Newton (N).","The newton (kg·m/s²) follows from F=m·a; joule is energy, pascal is pressure, watt is power.","force, newton's laws, si units","easy"],
+      ["Which particle determines atomic number?","Electron","Neutron","Proton","Nucleus","","","","","","","","medium"],
     ]);
-    ws["!cols"] = [{wch:50},{wch:18},{wch:18},{wch:18},{wch:18},{wch:8},{wch:15},{wch:18},{wch:8},{wch:38},{wch:12}];
+    ws["!cols"] = [{wch:50},{wch:18},{wch:18},{wch:18},{wch:18},{wch:8},{wch:15},{wch:18},{wch:8},{wch:38},{wch:55},{wch:30},{wch:12}];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Questions");
     XLSX.writeFile(wb, "questions-template.xlsx");

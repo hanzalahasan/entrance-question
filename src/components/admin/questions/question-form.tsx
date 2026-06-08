@@ -30,6 +30,8 @@ export default function QuestionForm({
 }: QuestionFormProps) {
   const [allSubjects, setAllSubjects] = useState<SubjectMaster[]>([]);
   const [allTopics, setAllTopics] = useState<TopicMaster[]>([]);
+  const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState("");
 
   useEffect(() => {
     getStoredSubjects().then((subjects) =>
@@ -37,6 +39,49 @@ export default function QuestionForm({
     );
     getStoredTopics().then(setAllTopics);
   }, []);
+
+  async function handleGenerateLong() {
+    setGenerating(true);
+    setGenerateError("");
+    try {
+      const opt = (key: string) =>
+        questionData.options.find((o) => o.key === key)?.value ?? "";
+      const res = await fetch("/api/admin/generate-explanation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: questionData.question,
+          optionA: opt("A"),
+          optionB: opt("B"),
+          optionC: opt("C"),
+          optionD: opt("D"),
+          answer: questionData.answer,
+          explanation: questionData.explanation,
+          subjectName: questionData.subjectName,
+          topicName: questionData.topicName,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setGenerateError(data.error ?? "Generation failed.");
+        return;
+      }
+      onChange({
+        ...questionData,
+        explanationLong: data.longExplanation,
+        // Only fill concepts if the admin hasn't set any.
+        concepts:
+          questionData.concepts && questionData.concepts.length > 0
+            ? questionData.concepts
+            : data.concepts ?? [],
+        updatedAt: new Date().toISOString(),
+      });
+    } catch {
+      setGenerateError("Network error during generation.");
+    } finally {
+      setGenerating(false);
+    }
+  }
 
   const activeTopics = useMemo(() => {
     if (!questionData.subjectId) return [];
@@ -381,14 +426,29 @@ export default function QuestionForm({
             className="w-full rounded-2xl border border-gray-300 bg-gray-50 p-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-white"
           />
 
-          <label className="mb-1 mt-4 block text-xs font-black uppercase tracking-wide text-gray-500">
-            Long explanation (shown on “Explain more”)
-          </label>
+          <div className="mb-1 mt-4 flex flex-wrap items-center justify-between gap-2">
+            <label className="block text-xs font-black uppercase tracking-wide text-gray-500">
+              Long explanation (shown on “Explain more”)
+            </label>
+            <button
+              type="button"
+              onClick={handleGenerateLong}
+              disabled={generating || !questionData.question || !questionData.answer}
+              className="rounded-full bg-purple-600 px-4 py-1.5 text-xs font-black text-white transition hover:bg-purple-700 active:scale-95 disabled:opacity-50"
+            >
+              {generating ? "✨ Generating…" : "✨ Generate with AI"}
+            </button>
+          </div>
+          {generateError && (
+            <div className="mb-2 rounded-xl border border-red-200 bg-red-50 p-2 text-xs font-bold text-red-700">
+              {generateError}
+            </div>
+          )}
           <textarea
             value={questionData.explanationLong || ""}
             onChange={(event) => updateField("explanationLong", event.target.value)}
             rows={6}
-            placeholder="A deeper, all-around explanation of the concept. Leave blank to hide the “Explain more” button. (Phase 2 can auto-fill this from your books.)"
+            placeholder="A deeper, all-around explanation of the concept. Leave blank to hide the “Explain more” button. Click “Generate with AI” to write it automatically."
             className="w-full rounded-2xl border border-gray-300 bg-gray-50 p-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-white"
           />
 

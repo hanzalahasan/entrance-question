@@ -19,6 +19,7 @@ import {
   unpublishQuestion,
   bulkUpdateQuestionStatus,
   saveQuestions,
+  updateQuestion,
 } from "@/services/admin-question-store";
 
 import { recheckAllDuplicates } from "@/services/recheck-duplicate-service";
@@ -58,6 +59,7 @@ function QuestionManagementContent() {
   const [difficultyFilter, setDifficultyFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [genProgress, setGenProgress] = useState<{ done: number; total: number } | null>(null);
 
   async function load() {
     try {
@@ -113,6 +115,60 @@ function QuestionManagementContent() {
     } catch {
       setError("Duplicate recheck failed.");
     }
+  }
+
+  // Generate a long explanation (via AI) for every question that lacks one.
+  async function handleGenerateMissingLong() {
+    const all = await getStoredQuestions();
+    const missing = all.filter((q) => !q.explanationLong?.trim());
+    if (missing.length === 0) {
+      setError("All questions already have a long explanation.");
+      return;
+    }
+
+    setError("");
+    setGenProgress({ done: 0, total: missing.length });
+
+    for (const q of missing) {
+      try {
+        const opt = (key: string) =>
+          q.options.find((o) => o.key === key)?.value ?? "";
+        const res = await fetch("/api/admin/generate-explanation", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            question: q.question,
+            optionA: opt("A"),
+            optionB: opt("B"),
+            optionC: opt("C"),
+            optionD: opt("D"),
+            answer: q.answer,
+            explanation: q.explanation,
+            subjectName: q.subjectName,
+            topicName: q.topicName,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error ?? "Generation failed.");
+          break;
+        }
+        await updateQuestion({
+          ...q,
+          explanationLong: data.longExplanation,
+          concepts:
+            q.concepts && q.concepts.length > 0 ? q.concepts : data.concepts ?? [],
+          updatedAt: new Date().toISOString(),
+        });
+      } catch {
+        setError("Network error during generation.");
+        break;
+      }
+      setGenProgress((p) => (p ? { ...p, done: p.done + 1 } : p));
+    }
+
+    setGenProgress(null);
+    await load();
   }
 
   function handleUnpublish(id: number) {
@@ -240,12 +296,23 @@ function QuestionManagementContent() {
             ))}
           </div>
 
-          <button
-            onClick={handleRecheckDuplicates}
-            className="rounded-full bg-yellow-100 px-4 py-2 text-sm font-black text-yellow-700 transition hover:bg-yellow-200"
-          >
-            Recheck Duplicates
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={handleGenerateMissingLong}
+              disabled={genProgress !== null}
+              className="rounded-full bg-purple-600 px-4 py-2 text-sm font-black text-white transition hover:bg-purple-700 disabled:opacity-60"
+            >
+              {genProgress
+                ? `✨ Generating ${genProgress.done}/${genProgress.total}…`
+                : "✨ AI: Fill missing long explanations"}
+            </button>
+            <button
+              onClick={handleRecheckDuplicates}
+              className="rounded-full bg-yellow-100 px-4 py-2 text-sm font-black text-yellow-700 transition hover:bg-yellow-200"
+            >
+              Recheck Duplicates
+            </button>
+          </div>
         </div>
 
         <QuestionBulkActions

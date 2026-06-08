@@ -121,4 +121,82 @@ export const sampleQuestions: Question[] = [
     createdAt: "2026-05-14",
     updatedAt: "2026-05-14",
   },
+  {
+    id: 4,
+    uuid: "q-physics-002",
+    question: "Newton's first law of motion is also known as the law of?",
+    options: [
+      { key: "A", value: "Inertia", type: "text" },
+      { key: "B", value: "Acceleration", type: "text" },
+      { key: "C", value: "Momentum", type: "text" },
+      { key: "D", value: "Gravitation", type: "text" },
+    ],
+    answer: "A",
+    explanation: "Newton's first law is the law of inertia.",
+    explanationLong:
+      "Newton's first law states that a body remains at rest or in uniform straight-line motion " +
+      "unless acted upon by a net external force. This tendency to resist a change in state of " +
+      "motion is called inertia, and it increases with mass. The second law (F = m·a) is about " +
+      "acceleration, the third law is about action–reaction pairs, and gravitation is a separate " +
+      "law — common distractors on this question.",
+    concepts: ["force", "newton's laws of motion", "inertia"],
+    subjectId: 1,
+    topicId: 1,
+    subjectName: "Physics",
+    topicName: "Mechanics",
+    year: "2023",
+    repeatedYears: ["2023"],
+    repeatCount: 1,
+    source: "past_year",
+    importSource: "manual",
+    difficulty: "easy",
+    status: "published",
+    media: {},
+    aiTags: ["newton", "inertia", "laws of motion"],
+    aiReviewStatus: "approved",
+    duplicateCheckStatus: "unique",
+    possibleDuplicateIds: [],
+    isMockEligible: true,
+    createdAt: "2026-05-14",
+    updatedAt: "2026-05-14",
+  },
+  {
+    id: 5,
+    uuid: "q-physics-003",
+    question: "Which physical quantity is a vector?",
+    options: [
+      { key: "A", value: "Mass", type: "text" },
+      { key: "B", value: "Speed", type: "text" },
+      { key: "C", value: "Force", type: "text" },
+      { key: "D", value: "Temperature", type: "text" },
+    ],
+    answer: "C",
+    explanation: "Force is a vector quantity — it has magnitude and direction.",
+    explanationLong:
+      "A vector has both magnitude and direction; a scalar has magnitude only. Force is a vector " +
+      "because pushing left vs right gives different results even with the same strength. Mass, " +
+      "speed and temperature are scalars (speed is the magnitude of the velocity vector). This is " +
+      "why forces are added using vector addition (the parallelogram/triangle rule), not simple " +
+      "arithmetic.",
+    concepts: ["force", "vectors and scalars"],
+    subjectId: 1,
+    topicId: 1,
+    subjectName: "Physics",
+    topicName: "Mechanics",
+    year: "2024",
+    repeatedYears: ["2024"],
+    repeatCount: 1,
+    source: "past_year",
+    importSource: "manual",
+    difficulty: "medium",
+    status: "published",
+    media: {},
+    aiTags: ["vector", "scalar", "force"],
+    aiReviewStatus: "approved",
+    duplicateCheckStatus: "unique",
+    possibleDuplicateIds: [],
+    isMockEligible: true,
+    createdAt: "2026-05-14",
+    updatedAt: "2026-05-14",
+  },
 ];
