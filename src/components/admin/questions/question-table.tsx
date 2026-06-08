@@ -10,6 +10,7 @@ type QuestionTableProps = {
   onSelectAll: () => void;
   onPublish: (id: number) => void;
   onUnpublish: (id: number) => void;
+  onDelete: (id: number) => void;
 };
 
 function getDuplicateLabel(status?: Question["duplicateCheckStatus"]) {
@@ -25,6 +26,7 @@ export default function QuestionTable({
   onSelectAll,
   onPublish,
   onUnpublish,
+  onDelete,
 }: QuestionTableProps) {
   const safeQuestions = Array.isArray(questions) ? questions : [];
   const safeSelectedIds = Array.isArray(selectedIds) ? selectedIds : [];
@@ -145,6 +147,13 @@ export default function QuestionTable({
                         Publish
                       </button>
                     )}
+
+                    <button
+                      onClick={() => onDelete(question.id)}
+                      className="rounded-xl px-3 py-2 text-xs font-black text-red-600 transition hover:bg-red-100"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </td>
               </tr>

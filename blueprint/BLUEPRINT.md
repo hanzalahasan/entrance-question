@@ -442,6 +442,8 @@ export interface QuestionRepo {
   update(q: Question): Promise<void>;
   patchStatus(id: number, status: Question["status"]): Promise<void>;
   bulkPatchStatus(ids: number[], status: Question["status"]): Promise<void>;
+  remove(id: number): Promise<void>;
+  bulkRemove(ids: number[]): Promise<void>;
   replaceAll(questions: Question[]): Promise<void>;
 }
 
@@ -729,11 +731,11 @@ boundary by the default export (required because it reads `useSearchParams`).
   data). Changing any resets to page 1 and clears selection.
 - **`<QuestionTable>`**: checkbox select (per-row + select-all-on-page), columns Question / **Status**
   (Published=green / Draft=yellow / Unpublished=grey badge) / Subject / Topic / Year / Difficulty /
-  Duplicate (color-coded badge) / Action. Action = "Edit / Review" link + a **status-based** button:
-  Published rows show "Unpublish", any non-published row (draft/unpublished) shows "Publish". (This
-  is per-row by status, NOT per-tab — so drafts in the Active tab can be published directly.)
-- **`<QuestionBulkActions>`**: appears when selection > 0; offers **Bulk Publish** and **Bulk
-  Unpublish** (both always, since the list can mix statuses) + clear selection.
+  Duplicate (color-coded badge) / Action. Action = "Edit / Review" link + a **status-based** button
+  (Published→"Unpublish", else "Publish") + a **"Delete"** button (red). Delete goes through
+  `<ConfirmDialog>`.
+- **`<QuestionBulkActions>`**: appears when selection > 0; offers **Bulk Publish**, **Bulk
+  Unpublish**, and **Bulk Delete** (with confirm) + clear selection.
 - Unpublish (single or bulk) goes through `<ConfirmDialog>`. Publish is immediate.
 - **"Recheck Duplicates"** button → `recheckAllDuplicates(all)` then persist.
 - `<QuestionPagination>` Prev/Next (hidden when ≤1 page).
@@ -921,6 +923,8 @@ preview table (then AI-fill / import as above).
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-08** — Added a **Delete** feature for questions: per-row Delete + Bulk Delete (both with
+  a confirm dialog), backed by new `remove`/`bulkRemove` on `QuestionRepo` (localStorage + Supabase).
 - **2026-06-08** — AI now generates **both short + long** explanations (and concepts) in one call;
   the admin form's "✨ Generate with AI" fills all three (editable), and the bulk action fills missing
   longs + empty shorts.

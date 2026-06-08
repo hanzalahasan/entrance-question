@@ -18,6 +18,8 @@ import {
   publishQuestion,
   unpublishQuestion,
   bulkUpdateQuestionStatus,
+  deleteQuestion,
+  bulkDeleteQuestions,
   saveQuestions,
   updateQuestion,
 } from "@/services/admin-question-store";
@@ -225,6 +227,38 @@ function QuestionManagementContent() {
     }
   }
 
+  function handleDelete(id: number) {
+    setConfirm({
+      message: "Delete this question permanently? This cannot be undone.",
+      onConfirm: async () => {
+        setConfirm(null);
+        try {
+          await deleteQuestion(id);
+          setSelectedIds((prev) => prev.filter((x) => x !== id));
+          await load();
+        } catch {
+          setError("Failed to delete question.");
+        }
+      },
+    });
+  }
+
+  function handleBulkDelete() {
+    setConfirm({
+      message: `Delete ${selectedIds.length} question(s) permanently? This cannot be undone.`,
+      onConfirm: async () => {
+        setConfirm(null);
+        try {
+          await bulkDeleteQuestions(selectedIds);
+          setSelectedIds([]);
+          await load();
+        } catch {
+          setError("Bulk delete failed.");
+        }
+      },
+    });
+  }
+
   function handleSelect(id: number) {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
@@ -321,6 +355,7 @@ function QuestionManagementContent() {
           selectedCount={selectedIds.length}
           onBulkPublish={handleBulkPublish}
           onBulkUnpublish={handleBulkUnpublish}
+          onBulkDelete={handleBulkDelete}
           onClearSelection={() => setSelectedIds([])}
         />
 
@@ -344,6 +379,7 @@ function QuestionManagementContent() {
               onSelectAll={handleSelectAll}
               onPublish={handlePublish}
               onUnpublish={handleUnpublish}
+              onDelete={handleDelete}
             />
             <QuestionPagination
               currentPage={currentPage}

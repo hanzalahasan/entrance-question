@@ -4,6 +4,7 @@ type QuestionBulkActionsProps = {
   selectedCount: number;
   onBulkPublish: () => void;
   onBulkUnpublish: () => void;
+  onBulkDelete: () => void;
   onClearSelection: () => void;
 };
 
@@ -11,6 +12,7 @@ export default function QuestionBulkActions({
   selectedCount,
   onBulkPublish,
   onBulkUnpublish,
+  onBulkDelete,
   onClearSelection,
 }: QuestionBulkActionsProps) {
   if (selectedCount === 0) return null;
@@ -31,9 +33,16 @@ export default function QuestionBulkActions({
 
         <button
           onClick={onBulkUnpublish}
-          className="rounded-xl px-4 py-2 text-sm font-black text-red-600 transition hover:bg-red-100"
+          className="rounded-xl px-4 py-2 text-sm font-black text-orange-600 transition hover:bg-orange-100"
         >
           Bulk Unpublish
+        </button>
+
+        <button
+          onClick={onBulkDelete}
+          className="rounded-xl px-4 py-2 text-sm font-black text-red-600 transition hover:bg-red-100"
+        >
+          Bulk Delete
         </button>
 
         <button

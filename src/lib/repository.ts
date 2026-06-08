@@ -24,6 +24,8 @@ export interface QuestionRepo {
   update(q: Question): Promise<void>;
   patchStatus(id: number, status: Question["status"]): Promise<void>;
   bulkPatchStatus(ids: number[], status: Question["status"]): Promise<void>;
+  remove(id: number): Promise<void>;
+  bulkRemove(ids: number[]): Promise<void>;
   replaceAll(questions: Question[]): Promise<void>;
 }
 
@@ -98,6 +100,14 @@ const localQuestionRepo: QuestionRepo = {
         ids.includes(q.id) ? { ...q, status, updatedAt: new Date().toISOString() } : q
       )
     );
+  },
+  async remove(id) {
+    const all = read<Question[]>(QUESTIONS_KEY, sampleQuestions);
+    write(QUESTIONS_KEY, all.filter((q) => q.id !== id));
+  },
+  async bulkRemove(ids) {
+    const all = read<Question[]>(QUESTIONS_KEY, sampleQuestions);
+    write(QUESTIONS_KEY, all.filter((q) => !ids.includes(q.id)));
   },
   async replaceAll(questions) {
     write(QUESTIONS_KEY, questions);
@@ -278,6 +288,14 @@ const supabaseQuestionRepo: QuestionRepo = {
   },
   async bulkPatchStatus(ids, status) {
     const { error } = await sb().from("questions").update({ status }).in("id", ids);
+    if (error) throw error;
+  },
+  async remove(id) {
+    const { error } = await sb().from("questions").delete().eq("id", id);
+    if (error) throw error;
+  },
+  async bulkRemove(ids) {
+    const { error } = await sb().from("questions").delete().in("id", ids);
     if (error) throw error;
   },
   async replaceAll(questions) {
