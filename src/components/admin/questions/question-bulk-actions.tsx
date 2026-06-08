@@ -2,7 +2,6 @@
 
 type QuestionBulkActionsProps = {
   selectedCount: number;
-  activeTab: "active" | "unpublished";
   onBulkPublish: () => void;
   onBulkUnpublish: () => void;
   onClearSelection: () => void;
@@ -10,7 +9,6 @@ type QuestionBulkActionsProps = {
 
 export default function QuestionBulkActions({
   selectedCount,
-  activeTab,
   onBulkPublish,
   onBulkUnpublish,
   onClearSelection,
@@ -24,8 +22,6 @@ export default function QuestionBulkActions({
       </p>
 
       <div className="flex flex-wrap gap-2">
-        {/* Active tab mixes drafts + published, so offer both. Unpublished
-            tab only needs Publish. */}
         <button
           onClick={onBulkPublish}
           className="rounded-xl px-4 py-2 text-sm font-black text-green-600 transition hover:bg-green-100"
@@ -33,14 +29,12 @@ export default function QuestionBulkActions({
           Bulk Publish
         </button>
 
-        {activeTab === "active" && (
-          <button
-            onClick={onBulkUnpublish}
-            className="rounded-xl px-4 py-2 text-sm font-black text-red-600 transition hover:bg-red-100"
-          >
-            Bulk Unpublish
-          </button>
-        )}
+        <button
+          onClick={onBulkUnpublish}
+          className="rounded-xl px-4 py-2 text-sm font-black text-red-600 transition hover:bg-red-100"
+        >
+          Bulk Unpublish
+        </button>
 
         <button
           onClick={onClearSelection}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import AdminLayout from "@/components/admin/admin-layout";
 import { getStoredQuestions } from "@/services/admin-question-store";
 
@@ -23,19 +24,14 @@ export default function AdminDashboardPage() {
       .catch(() => setError("Failed to load dashboard data."));
   }, []);
 
-  const cards = stats
-    ? [
-        { label: "Total Questions", value: stats.total },
-        { label: "Published", value: stats.published },
-        { label: "Draft", value: stats.draft },
-        { label: "Unpublished", value: stats.unpublished },
-      ]
-    : [
-        { label: "Total Questions", value: "—" },
-        { label: "Published", value: "—" },
-        { label: "Draft", value: "—" },
-        { label: "Unpublished", value: "—" },
-      ];
+  // Each card links into Question Management, filtered to that status, so e.g.
+  // clicking "Draft" lands directly on the drafts ready to publish.
+  const cards = [
+    { label: "Total Questions", value: stats?.total ?? "—", href: "/admin/questions" },
+    { label: "Published", value: stats?.published ?? "—", href: "/admin/questions?status=published" },
+    { label: "Draft", value: stats?.draft ?? "—", href: "/admin/questions?status=draft" },
+    { label: "Unpublished", value: stats?.unpublished ?? "—", href: "/admin/questions?status=unpublished" },
+  ];
 
   return (
     <AdminLayout
@@ -50,15 +46,16 @@ export default function AdminDashboardPage() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {cards.map((card) => (
-          <div
+          <Link
             key={card.label}
-            className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800"
+            href={card.href}
+            className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm transition hover:border-blue-400 hover:shadow-md active:scale-[0.99] dark:border-slate-700 dark:bg-slate-800 dark:hover:border-blue-500"
           >
             <p className="text-sm font-bold text-gray-500">{card.label}</p>
             <h2 className="mt-2 text-3xl font-black text-gray-900 dark:text-white">
               {card.value}
             </h2>
-          </div>
+          </Link>
         ))}
       </div>
 

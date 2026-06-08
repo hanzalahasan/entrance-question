@@ -9,7 +9,7 @@
 > time a feature is added or changed in the app, this file is updated to match — automatically,
 > without being asked.
 >
-> **Last synced with codebase:** 2026-06-08 (Supabase backend wired + draft fixes)
+> **Last synced with codebase:** 2026-06-08 (clickable dashboard cards + status filter pills)
 
 ---
 
@@ -663,6 +663,8 @@ Fixed left nav (hidden below `lg`). Menu items (active state via `usePathname`):
 
 ### `/admin` — Dashboard (`src/app/admin/page.tsx`)
 Loads all questions, computes 4 stat cards: **Total**, **Published**, **Draft**, **Unpublished**.
+Each card is a **clickable `<Link>`** into Question Management filtered to that status
+(`/admin/questions?status=draft` etc.), so e.g. clicking "Draft" lands directly on the drafts.
 Shows "—" until loaded. Below: a dashed placeholder "Dashboard Activity" panel.
 
 ### `/admin/login` (`src/app/admin/login/page.tsx`)
@@ -683,9 +685,12 @@ Password form (`<Suspense>`-wrapped because it reads `useSearchParams` for `?fro
   6. Reload all, `saveQuestions(recheckAllDuplicates(all))`, route to `/admin/questions`.
 
 ### `/admin/questions` (`src/app/admin/questions/page.tsx`)
-Question management list.
+Question management list. The content is in `QuestionManagementContent`, wrapped in a `<Suspense>`
+boundary by the default export (required because it reads `useSearchParams`).
 - `normalizeStatus()` maps any legacy `"archived"` → `"unpublished"`.
-- **Tabs:** "Active (n)" = published+draft, "Unpublished (n)". `QUESTIONS_PER_PAGE = 10`.
+- **Status pills:** All / Published / Draft / Unpublished, each with a live count; the active one
+  filters the list (`statusFilter`). Seeds from the `?status=` query param (dashboard cards link to
+  e.g. `?status=draft`). `QUESTIONS_PER_PAGE = 10`.
 - **Filters:** search (question text contains), subject, year, difficulty (selects populated from
   data). Changing any resets to page 1 and clears selection.
 - **`<QuestionTable>`**: checkbox select (per-row + select-all-on-page), columns Question / **Status**
@@ -693,8 +698,8 @@ Question management list.
   Duplicate (color-coded badge) / Action. Action = "Edit / Review" link + a **status-based** button:
   Published rows show "Unpublish", any non-published row (draft/unpublished) shows "Publish". (This
   is per-row by status, NOT per-tab — so drafts in the Active tab can be published directly.)
-- **`<QuestionBulkActions>`**: appears when selection > 0; always offers **Bulk Publish**, plus
-  **Bulk Unpublish** in the Active tab (which mixes drafts + published); + clear selection.
+- **`<QuestionBulkActions>`**: appears when selection > 0; offers **Bulk Publish** and **Bulk
+  Unpublish** (both always, since the list can mix statuses) + clear selection.
 - Unpublish (single or bulk) goes through `<ConfirmDialog>`. Publish is immediate.
 - **"Recheck Duplicates"** button → `recheckAllDuplicates(all)` then persist.
 - `<QuestionPagination>` Prev/Next (hidden when ≤1 page).
@@ -872,6 +877,11 @@ preview table (then AI-fill / import as above).
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-08** — Made the dashboard stat cards **clickable links** into Question Management
+  filtered by status (`?status=draft` etc.). Replaced the Active/Unpublished tabs with **All /
+  Published / Draft / Unpublished status pills** (live counts) that seed from the `?status=` query
+  param, so "go into drafts" is one click from the dashboard. Bulk Publish + Bulk Unpublish are now
+  both always available. (Questions page wrapped in `<Suspense>` for `useSearchParams`.)
 - **2026-06-08** — Wired the **Supabase (PostgreSQL/SQL) backend**: added `src/lib/supabase.ts`
   (`isSupabaseConfigured` + client) and full Supabase implementations of `QuestionRepo`/`MasterRepo`
   in `repository.ts` (snake_case⇄camelCase mappers, upsert-by-id). The app now uses the shared DB

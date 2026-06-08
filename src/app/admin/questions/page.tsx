@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import AdminLayout from "@/components/admin/admin-layout";
 import QuestionToolbar from "@/components/admin/questions/question-toolbar";
@@ -31,13 +32,26 @@ function normalizeStatus(q: Question): Question {
 
 type ConfirmState = { message: string; onConfirm: () => void } | null;
 
-export default function QuestionManagementPage() {
+type StatusFilter = "all" | "published" | "draft" | "unpublished";
+
+function isStatusFilter(value: string | null): value is StatusFilter {
+  return value === "published" || value === "draft" || value === "unpublished";
+}
+
+function QuestionManagementContent() {
+  const searchParams = useSearchParams();
+
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [confirm, setConfirm] = useState<ConfirmState>(null);
 
-  const [activeTab, setActiveTab] = useState<"active" | "unpublished">("active");
+  // Status filter — seeds from the ?status= query param (e.g. dashboard cards
+  // link to ?status=draft) so "go into drafts" works in one click.
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(() => {
+    const param = searchParams.get("status");
+    return isStatusFilter(param) ? param : "all";
+  });
   const [search, setSearch] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("");
   const [yearFilter, setYearFilter] = useState("");
@@ -58,11 +72,17 @@ export default function QuestionManagementPage() {
 
   useEffect(() => { load(); }, []);
 
-  const activeQuestions = questions.filter(
-    (q) => q.status === "published" || q.status === "draft"
-  );
-  const unpublishedQuestions = questions.filter((q) => q.status === "unpublished");
-  const baseQuestions = activeTab === "active" ? activeQuestions : unpublishedQuestions;
+  const counts = {
+    all: questions.length,
+    published: questions.filter((q) => q.status === "published").length,
+    draft: questions.filter((q) => q.status === "draft").length,
+    unpublished: questions.filter((q) => q.status === "unpublished").length,
+  };
+
+  const baseQuestions =
+    statusFilter === "all"
+      ? questions
+      : questions.filter((q) => q.status === statusFilter);
 
   const filteredQuestions = useMemo(() => {
     return baseQuestions.filter((q) => {
@@ -199,19 +219,25 @@ export default function QuestionManagementPage() {
 
       <div className="space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex gap-2">
-            <button
-              onClick={() => { setActiveTab("active"); resetPage(); }}
-              className={`rounded-full px-4 py-2 text-sm font-black ${activeTab === "active" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600"}`}
-            >
-              Active ({activeQuestions.length})
-            </button>
-            <button
-              onClick={() => { setActiveTab("unpublished"); resetPage(); }}
-              className={`rounded-full px-4 py-2 text-sm font-black ${activeTab === "unpublished" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600"}`}
-            >
-              Unpublished ({unpublishedQuestions.length})
-            </button>
+          <div className="flex flex-wrap gap-2">
+            {([
+              { key: "all", label: "All" },
+              { key: "published", label: "Published" },
+              { key: "draft", label: "Draft" },
+              { key: "unpublished", label: "Unpublished" },
+            ] as const).map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => { setStatusFilter(tab.key); resetPage(); }}
+                className={`rounded-full px-4 py-2 text-sm font-black transition ${
+                  statusFilter === tab.key
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                }`}
+              >
+                {tab.label} ({counts[tab.key]})
+              </button>
+            ))}
           </div>
 
           <button
@@ -224,7 +250,6 @@ export default function QuestionManagementPage() {
 
         <QuestionBulkActions
           selectedCount={selectedIds.length}
-          activeTab={activeTab}
           onBulkPublish={handleBulkPublish}
           onBulkUnpublish={handleBulkUnpublish}
           onClearSelection={() => setSelectedIds([])}
@@ -260,5 +285,21 @@ export default function QuestionManagementPage() {
         </div>
       </div>
     </AdminLayout>
+  );
+}
+
+export default function QuestionManagementPage() {
+  return (
+    <Suspense
+      fallback={
+        <AdminLayout title="Question Management">
+          <div className="rounded-3xl border border-gray-200 bg-white p-8 text-center text-sm font-bold text-gray-500 dark:border-slate-700 dark:bg-slate-800">
+            Loading questions...
+          </div>
+        </AdminLayout>
+      }
+    >
+      <QuestionManagementContent />
+    </Suspense>
   );
 }
