@@ -27,8 +27,22 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
   // Inside the explanation modal: whether the long explanation is expanded, and
   // which panel is shown (the explanation vs the related-questions list).
   const [showLong, setShowLong] = useState(false);
-  // Compact (scrollable) vs expanded (tall) explanation modal.
+  // Free-floating explanation window: position + size (px). Null until opened.
+  const [winPos, setWinPos] = useState<{ x: number; y: number } | null>(null);
+  const [winSize, setWinSize] = useState<{ w: number; h: number } | null>(null);
   const [expanded, setExpanded] = useState(false);
+  const dragRef = useRef<
+    | {
+        mode: "move" | "resize";
+        startX: number;
+        startY: number;
+        origX: number;
+        origY: number;
+        origW: number;
+        origH: number;
+      }
+    | null
+  >(null);
   const [explanationTab, setExplanationTab] = useState<"explanation" | "related">(
     "explanation"
   );
@@ -78,6 +92,39 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  // Drag-to-move (header) and drag-to-resize (corner) for the explanation window.
+  useEffect(() => {
+    function onMove(e: PointerEvent) {
+      const d = dragRef.current;
+      if (!d) return;
+      const dx = e.clientX - d.startX;
+      const dy = e.clientY - d.startY;
+      if (d.mode === "move") {
+        const w = d.origW;
+        const maxX = window.innerWidth - 60;
+        const maxY = window.innerHeight - 60;
+        setWinPos({
+          x: Math.min(Math.max(8 - w + 80, d.origX + dx), maxX),
+          y: Math.min(Math.max(0, d.origY + dy), maxY),
+        });
+      } else {
+        setWinSize({
+          w: Math.min(Math.max(320, d.origW + dx), window.innerWidth - 16),
+          h: Math.min(Math.max(220, d.origH + dy), window.innerHeight - 16),
+        });
+      }
+    }
+    function onUp() {
+      dragRef.current = null;
+    }
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, []);
+
   // Resolve the current question from the full pool (so we can show a related
   // question that sits outside the active filter), falling back to the filter.
   const lookup = pool && pool.length > 0 ? pool : questions;
@@ -96,12 +143,69 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
     setHighlightedIndex(0);
   }
 
+  // Default window size/position, centred. Called when the modal opens.
+  function defaultWindow(big = false) {
+    const w = Math.min(big ? 900 : 640, window.innerWidth - 24);
+    const h = Math.min(
+      Math.round(window.innerHeight * (big ? 0.9 : 0.55)),
+      window.innerHeight - 24
+    );
+    return {
+      size: { w, h },
+      pos: {
+        x: Math.max(12, Math.round((window.innerWidth - w) / 2)),
+        y: Math.max(12, Math.round((window.innerHeight - h) / 2)),
+      },
+    };
+  }
+
   function openExplanation() {
     setShowExplanation(true);
     setShowLong(false);
     setExpanded(false);
     setExplanationTab("explanation");
     setExplanationSeen(true);
+    const d = defaultWindow(false);
+    setWinSize(d.size);
+    setWinPos(d.pos);
+  }
+
+  // Header drag → move the window.
+  function startMove(event: React.PointerEvent) {
+    if (!winPos || !winSize) return;
+    dragRef.current = {
+      mode: "move",
+      startX: event.clientX,
+      startY: event.clientY,
+      origX: winPos.x,
+      origY: winPos.y,
+      origW: winSize.w,
+      origH: winSize.h,
+    };
+  }
+
+  // Corner grip drag → resize the window.
+  function startResize(event: React.PointerEvent) {
+    if (!winPos || !winSize) return;
+    event.stopPropagation();
+    dragRef.current = {
+      mode: "resize",
+      startX: event.clientX,
+      startY: event.clientY,
+      origX: winPos.x,
+      origY: winPos.y,
+      origW: winSize.w,
+      origH: winSize.h,
+    };
+  }
+
+  // Expand / shrink preset (recentres).
+  function toggleWindowSize() {
+    const next = !expanded;
+    setExpanded(next);
+    const d = defaultWindow(next);
+    setWinSize(d.size);
+    setWinPos(d.pos);
   }
 
   // Jump to a related question (it may be outside the active filter — that's
@@ -393,23 +497,23 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
         </div>
       </div>
 
-      {showExplanation && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          {/* Compact + scrollable by default; the expand toggle grows it tall.
-              The body always scrolls so a long explanation never overwhelms. */}
+      {showExplanation && winPos && winSize && (
+        <div className="fixed inset-0 z-50 bg-black/50">
+          {/* Draggable (header) + resizable (corner grip) floating window. */}
           <div
-            className={`flex w-full flex-col rounded-3xl bg-white shadow-xl transition-all dark:bg-slate-800 ${
-              showLong || explanationTab === "related"
-                ? "max-w-3xl"
-                : "max-w-xl"
-            } ${expanded ? "max-h-[90vh]" : "max-h-[55vh]"}`}
+            style={{ left: winPos.x, top: winPos.y, width: winSize.w, height: winSize.h }}
+            className="absolute flex flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-slate-800"
           >
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-gray-200 p-5 dark:border-slate-700">
+            {/* Header — drag handle */}
+            <div
+              onPointerDown={startMove}
+              className="flex cursor-move select-none items-center justify-between border-b border-gray-200 p-5 dark:border-slate-700"
+            >
               {explanationTab === "related" ? (
                 <button
+                  onPointerDown={(e) => e.stopPropagation()}
                   onClick={() => setExplanationTab("explanation")}
-                  className="text-sm font-black text-blue-600 transition hover:text-blue-700"
+                  className="cursor-pointer text-sm font-black text-blue-600 transition hover:text-blue-700"
                 >
                   ← Back to explanation
                 </button>
@@ -419,12 +523,30 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
                 </h3>
               )}
 
-              <button
-                onClick={() => setShowExplanation(false)}
-                className="rounded-full bg-red-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-700 active:scale-95"
-              >
-                Close
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Expand / shrink — on the RIGHT */}
+                <button
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={toggleWindowSize}
+                  title={expanded ? "Shrink window" : "Expand window"}
+                  aria-label={expanded ? "Shrink window" : "Expand window"}
+                  className="grid h-9 w-9 cursor-pointer place-items-center rounded-full border border-gray-300 text-gray-700 transition hover:bg-gray-50 active:scale-95 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700"
+                >
+                  {expanded ? (
+                    <Minimize2 className="h-4 w-4" />
+                  ) : (
+                    <Maximize2 className="h-4 w-4" />
+                  )}
+                </button>
+
+                <button
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={() => setShowExplanation(false)}
+                  className="cursor-pointer rounded-full bg-red-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-700 active:scale-95"
+                >
+                  Close
+                </button>
+              </div>
             </div>
 
             {/* Scrollable body */}
@@ -497,48 +619,36 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
             </div>
 
             {/* Footer actions */}
-            {explanationTab === "explanation" && (
-              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-200 p-4 dark:border-slate-700">
-                {/* Bottom-left: expand / shrink the window (only when long is open) */}
-                <div>
-                  {showLong && (
-                    <button
-                      onClick={() => setExpanded((e) => !e)}
-                      title={expanded ? "Shrink window" : "Expand window"}
-                      aria-label={expanded ? "Shrink window" : "Expand window"}
-                      className="grid h-11 w-11 place-items-center rounded-2xl border border-gray-300 text-gray-700 transition hover:bg-gray-50 active:scale-95 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700"
-                    >
-                      {expanded ? (
-                        <Minimize2 className="h-5 w-5" />
-                      ) : (
-                        <Maximize2 className="h-5 w-5" />
-                      )}
-                    </button>
-                  )}
-                </div>
-
-                {/* Bottom-right: primary actions */}
-                <div className="flex flex-wrap gap-2">
-                  {hasLongExplanation && !showLong && (
-                    <button
-                      onClick={() => setShowLong(true)}
-                      className="rounded-2xl bg-blue-600 px-5 py-3 font-black text-white transition hover:bg-blue-700 active:scale-95"
-                    >
-                      Explain more ↓
-                    </button>
-                  )}
-                  {/* Related questions only surface after the long explanation is opened. */}
-                  {showLong && relatedQuestions.length > 0 && (
-                    <button
-                      onClick={() => setExplanationTab("related")}
-                      className="rounded-2xl border border-gray-300 px-5 py-3 font-black text-gray-700 transition hover:bg-gray-50 active:scale-95 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700"
-                    >
-                      Related questions ({relatedQuestions.length})
-                    </button>
-                  )}
-                </div>
+            {explanationTab === "explanation" && (hasLongExplanation || (showLong && relatedQuestions.length > 0)) && (
+              <div className="flex flex-wrap gap-2 border-t border-gray-200 p-4 dark:border-slate-700">
+                {hasLongExplanation && !showLong && (
+                  <button
+                    onClick={() => setShowLong(true)}
+                    className="rounded-2xl bg-blue-600 px-5 py-3 font-black text-white transition hover:bg-blue-700 active:scale-95"
+                  >
+                    Explain more ↓
+                  </button>
+                )}
+                {/* Related questions only surface after the long explanation is opened. */}
+                {showLong && relatedQuestions.length > 0 && (
+                  <button
+                    onClick={() => setExplanationTab("related")}
+                    className="rounded-2xl border border-gray-300 px-5 py-3 font-black text-gray-700 transition hover:bg-gray-50 active:scale-95 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700"
+                  >
+                    Related questions ({relatedQuestions.length})
+                  </button>
+                )}
               </div>
             )}
+
+            {/* Resize grip — bottom-right corner */}
+            <div
+              onPointerDown={startResize}
+              title="Drag to resize"
+              className="absolute bottom-0 right-0 z-10 h-7 w-7 cursor-nwse-resize"
+            >
+              <div className="absolute bottom-2 right-2 h-2.5 w-2.5 border-b-2 border-r-2 border-gray-400 dark:border-slate-500" />
+            </div>
           </div>
         </div>
       )}
