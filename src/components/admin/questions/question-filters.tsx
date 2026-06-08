@@ -28,7 +28,7 @@ export default function QuestionFilters({
       <select
         value={subject}
         onChange={(event) => onSubjectChange(event.target.value)}
-        className="h-12 rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+        className="h-12 rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-white"
       >
         <option value="">All Subjects</option>
         {subjects.map((item) => (
@@ -41,7 +41,7 @@ export default function QuestionFilters({
       <select
         value={year}
         onChange={(event) => onYearChange(event.target.value)}
-        className="h-12 rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+        className="h-12 rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-white"
       >
         <option value="">All Years</option>
         {years.map((item) => (
@@ -54,7 +54,7 @@ export default function QuestionFilters({
       <select
         value={difficulty}
         onChange={(event) => onDifficultyChange(event.target.value)}
-        className="h-12 rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+        className="h-12 rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-white"
       >
         <option value="">All Difficulty</option>
         {difficulties.map((item) => (

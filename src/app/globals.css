@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Drive `dark:` utilities from a `.dark` class on <html> (toggle), not the OS setting. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ─── Base token definitions ─────────────────────────────────────── */
 :root {
   /* App colours (existing) */
@@ -35,10 +38,9 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* App colours (existing) */
-    --background: #0a0a0a;
+.dark {
+    /* App colours (existing) — softer than pure black */
+    --background: #0f172a;
     --foreground: #ededed;
 
     /* shadcn/ui dark tokens */
@@ -67,7 +69,6 @@
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.556 0 0);
-  }
 }
 
 /* ─── Tailwind v4 theme mapping ──────────────────────────────────── */

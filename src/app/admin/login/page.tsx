@@ -38,8 +38,8 @@ function LoginForm() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gray-100 px-4 dark:bg-slate-950">
-      <div className="w-full max-w-md rounded-3xl border border-gray-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <main className="flex min-h-screen items-center justify-center bg-gray-100 px-4 dark:bg-slate-900">
+      <div className="w-full max-w-md rounded-3xl border border-gray-200 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <h1 className="mb-2 text-2xl font-black text-gray-900 dark:text-white">
           Entrance Admin
         </h1>
@@ -55,7 +55,7 @@ function LoginForm() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Admin password"
             autoFocus
-            className="h-12 w-full rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none focus:border-blue-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+            className="h-12 w-full rounded-2xl border border-gray-300 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none focus:border-blue-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
           />
 
           {error && (

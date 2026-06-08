@@ -171,7 +171,7 @@ export default function TopFilterBar({
 
   return (
     <>
-      <section className="mb-5 rounded-3xl border border-gray-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <section className="mb-5 rounded-3xl border border-gray-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-[1.1fr_1.1fr_.75fr_auto]">
           <div ref={subjectRef} className="relative">
             <label className="mb-2 block text-sm font-black text-gray-500 dark:text-slate-400">
@@ -183,14 +183,14 @@ export default function TopFilterBar({
                 setSubjectOpen((prev) => !prev);
                 setYearOpen(false);
               }}
-              className="flex min-h-12 w-full items-center justify-between rounded-2xl border border-gray-300 bg-white px-4 text-left font-bold text-gray-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+              className="flex min-h-12 w-full items-center justify-between rounded-2xl border border-gray-300 bg-white px-4 text-left font-bold text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
             >
               <span className="truncate">{subjectTitle}</span>
               <span>▾</span>
             </button>
 
             {subjectOpen && (
-              <div className="absolute left-0 top-[76px] z-50 max-h-80 w-full overflow-y-auto rounded-2xl border border-gray-200 bg-white p-3 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+              <div className="absolute left-0 top-[76px] z-50 max-h-80 w-full overflow-y-auto rounded-2xl border border-gray-200 bg-white p-3 shadow-xl dark:border-slate-600 dark:bg-slate-800">
                 <div className="mb-2 flex items-center justify-between">
                   <b className="text-sm text-gray-900 dark:text-white">
                     Subjects
@@ -199,7 +199,7 @@ export default function TopFilterBar({
                   {filters.subjects.length > 1 && (
                     <button
                       onClick={clearSubjects}
-                      className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-500 dark:bg-slate-800 dark:text-slate-300"
+                      className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-500 dark:bg-slate-700 dark:text-slate-300"
                     >
                       Clear all
                     </button>
@@ -242,19 +242,19 @@ export default function TopFilterBar({
                 setYearOpen((prev) => !prev);
                 setSubjectOpen(false);
               }}
-              className="flex min-h-12 w-full items-center justify-between rounded-2xl border border-gray-300 bg-white px-4 text-left font-bold text-gray-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+              className="flex min-h-12 w-full items-center justify-between rounded-2xl border border-gray-300 bg-white px-4 text-left font-bold text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
             >
               <span className="truncate">{yearTitle}</span>
               <span>▾</span>
             </button>
 
             {yearOpen && (
-              <div className="absolute left-0 top-[76px] z-50 max-h-80 w-full overflow-y-auto rounded-2xl border border-gray-200 bg-white p-3 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+              <div className="absolute left-0 top-[76px] z-50 max-h-80 w-full overflow-y-auto rounded-2xl border border-gray-200 bg-white p-3 shadow-xl dark:border-slate-600 dark:bg-slate-800">
                 <input
                   value={yearSearch}
                   onChange={(event) => setYearSearch(event.target.value)}
                   placeholder="Search year..."
-                  className="mb-2 h-10 w-full rounded-xl border border-gray-300 bg-gray-50 px-3 text-sm font-semibold text-gray-800 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-white"
+                  className="mb-2 h-10 w-full rounded-xl border border-gray-300 bg-gray-50 px-3 text-sm font-semibold text-gray-800 outline-none dark:border-slate-600 dark:bg-slate-900 dark:text-white"
                 />
 
                 <div className="mb-2 flex items-center justify-between">
@@ -263,7 +263,7 @@ export default function TopFilterBar({
                   {filters.years.length > 1 && (
                     <button
                       onClick={clearYears}
-                      className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-500 dark:bg-slate-800 dark:text-slate-300"
+                      className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-500 dark:bg-slate-700 dark:text-slate-300"
                     >
                       Clear all
                     </button>
@@ -301,7 +301,7 @@ export default function TopFilterBar({
               Mock Test
             </label>
 
-            <button className="flex min-h-12 w-full items-center justify-between rounded-2xl border border-gray-300 bg-white px-4 text-left font-bold text-gray-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+            <button className="flex min-h-12 w-full items-center justify-between rounded-2xl border border-gray-300 bg-white px-4 text-left font-bold text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-white">
               Mock
             </button>
           </div>
@@ -314,7 +314,7 @@ export default function TopFilterBar({
             <div className="flex gap-2">
               <button
                 onClick={() => setMoreOpen(true)}
-                className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-gray-300 bg-white px-4 font-bold text-gray-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-gray-300 bg-white px-4 font-bold text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
               >
                 ☷ More Filters
 
@@ -351,8 +351,8 @@ export default function TopFilterBar({
 
       {moreOpen && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4">
-          <div className="max-h-[86vh] w-full max-w-4xl overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
-            <div className="flex items-center justify-between border-b border-gray-200 p-4 dark:border-slate-700">
+          <div className="max-h-[86vh] w-full max-w-4xl overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl dark:border-slate-600 dark:bg-slate-800">
+            <div className="flex items-center justify-between border-b border-gray-200 p-4 dark:border-slate-600">
               <h2 className="text-xl font-black text-gray-900 dark:text-white">
                 More Filters
               </h2>
@@ -373,14 +373,14 @@ export default function TopFilterBar({
                   {filters.years.length > 0 && (
                     <button
                       onClick={clearYears}
-                      className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-500 dark:bg-slate-800 dark:text-slate-300"
+                      className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-500 dark:bg-slate-700 dark:text-slate-300"
                     >
                       Clear all
                     </button>
                   )}
                 </div>
 
-                <div className="max-h-64 overflow-y-auto rounded-2xl border border-gray-200 bg-gray-50 p-2 dark:border-slate-700 dark:bg-slate-950">
+                <div className="max-h-64 overflow-y-auto rounded-2xl border border-gray-200 bg-gray-50 p-2 dark:border-slate-600 dark:bg-slate-900">
                   <label className="flex cursor-pointer items-center gap-2 rounded-xl p-2 text-sm font-bold text-gray-700 dark:text-slate-300">
                     <input
                       type="checkbox"
@@ -413,14 +413,14 @@ export default function TopFilterBar({
                   {filters.subjects.length > 0 && (
                     <button
                       onClick={clearSubjects}
-                      className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-500 dark:bg-slate-800 dark:text-slate-300"
+                      className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-500 dark:bg-slate-700 dark:text-slate-300"
                     >
                       Clear all
                     </button>
                   )}
                 </div>
 
-                <div className="max-h-64 overflow-y-auto rounded-2xl border border-gray-200 bg-gray-50 p-2 dark:border-slate-700 dark:bg-slate-950">
+                <div className="max-h-64 overflow-y-auto rounded-2xl border border-gray-200 bg-gray-50 p-2 dark:border-slate-600 dark:bg-slate-900">
                   <label className="flex cursor-pointer items-center gap-2 rounded-xl p-2 text-sm font-bold text-gray-700 dark:text-slate-300">
                     <input
                       type="checkbox"
@@ -453,14 +453,14 @@ export default function TopFilterBar({
                   {filters.topics.length > 0 && (
                     <button
                       onClick={clearTopics}
-                      className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-500 dark:bg-slate-800 dark:text-slate-300"
+                      className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-500 dark:bg-slate-700 dark:text-slate-300"
                     >
                       Clear all
                     </button>
                   )}
                 </div>
 
-                <div className="max-h-64 overflow-y-auto rounded-2xl border border-gray-200 bg-gray-50 p-2 dark:border-slate-700 dark:bg-slate-950">
+                <div className="max-h-64 overflow-y-auto rounded-2xl border border-gray-200 bg-gray-50 p-2 dark:border-slate-600 dark:bg-slate-900">
                   <label className="flex cursor-pointer items-center gap-2 rounded-xl p-2 text-sm font-bold text-gray-700 dark:text-slate-300">
                     <input
                       type="checkbox"
@@ -488,7 +488,7 @@ export default function TopFilterBar({
               </div>
             </div>
 
-            <div className="border-t border-gray-200 p-4 dark:border-slate-700">
+            <div className="border-t border-gray-200 p-4 dark:border-slate-600">
               <button
                 onClick={() => setMoreOpen(false)}
                 className="h-12 w-full rounded-2xl bg-blue-600 font-black text-white"

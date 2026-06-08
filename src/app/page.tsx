@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import TopFilterBar from "@/components/layout/top-filter-bar";
 import QuestionCard from "@/components/question/question-card";
+import ThemeToggle from "@/components/theme-toggle";
 
 import type { Question } from "@/types/question";
 import type { QuestionFilters } from "@/types/filter";
@@ -30,7 +31,7 @@ export default function HomePage() {
   const filteredQuestions = filterQuestions(questions, filters);
 
   return (
-    <main className="min-h-screen bg-gray-100 px-4 py-4 dark:bg-slate-950">
+    <main className="min-h-screen bg-gray-100 px-4 py-4 dark:bg-slate-900">
       <div className="mx-auto max-w-6xl">
         <div className="mb-4 flex items-center justify-between">
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -38,11 +39,9 @@ export default function HomePage() {
           </h1>
 
           <div className="flex items-center gap-2">
-            <button className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
-              🌙
-            </button>
+            <ThemeToggle />
 
-            <button className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+            <button className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 dark:border-slate-600 dark:bg-slate-800 dark:text-white">
               👤 Sign in
             </button>
           </div>

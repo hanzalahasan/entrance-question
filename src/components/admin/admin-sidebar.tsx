@@ -15,7 +15,7 @@ export default function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden min-h-screen w-72 border-r border-gray-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 lg:block">
+    <aside className="hidden min-h-screen w-72 border-r border-gray-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800 lg:block">
       <div className="mb-8">
         <h1 className="text-2xl font-black text-gray-900 dark:text-white">
           Entrance Admin

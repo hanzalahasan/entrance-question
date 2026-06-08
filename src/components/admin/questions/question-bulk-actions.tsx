@@ -42,7 +42,7 @@ export default function QuestionBulkActions({
 
         <button
           onClick={onClearSelection}
-          className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-black text-gray-700 transition hover:bg-white dark:border-slate-700 dark:text-white dark:hover:bg-slate-900"
+          className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-black text-gray-700 transition hover:bg-white dark:border-slate-600 dark:text-white dark:hover:bg-slate-900"
         >
           Clear Selection
         </button>
