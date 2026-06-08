@@ -9,7 +9,7 @@
 > time a feature is added or changed in the app, this file is updated to match — automatically,
 > without being asked.
 >
-> **Last synced with codebase:** 2026-06-08 (clickable dashboard cards + status filter pills)
+> **Last synced with codebase:** 2026-06-08 (Supabase project connected & live)
 
 ---
 
@@ -481,6 +481,20 @@ is drop-in. New IDs for subjects/topics use `Date.now()`. New question IDs use `
 
 ---
 
+### Live Supabase connection (as of 2026-06-08)
+A real Supabase project **is connected** and the production site uses it:
+- Org: "Hasan's Org" (`pnfmikyxlehkbqnwoekp`). Project: **entrance-question**
+  (ref `isohkebvmuskaorcjawg`, region `eu-central-1`). URL: `https://isohkebvmuskaorcjawg.supabase.co`.
+- `schema.sql` has been run (5 subjects, 7 topics seeded; questions start empty).
+- `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` are set in Vercel (production/preview/
+  development) and in local `.env.local` (gitignored). The anon key is the public client key.
+- Verified end-to-end: a question published in admin appears in student view across devices, and
+  admin status changes write back to the DB.
+- **Security caveat:** the schema's RLS policies are fully permissive (`FOR ALL USING (true)`), so
+  the public anon key can read/write everything. Functional for now (admin is password-gated at the
+  app layer), but should be tightened before real production (move writes server-side with the
+  service-role key + real admin auth, and restrict the write policies).
+
 ## 9. Database schema (Supabase)
 
 `supabase/schema.sql` — run in the Supabase SQL editor. Tables:
@@ -877,6 +891,10 @@ preview table (then AI-fill / import as above).
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-08** — **Connected a live Supabase project** (ref `isohkebvmuskaorcjawg`, eu-central-1):
+  ran `schema.sql`, set `NEXT_PUBLIC_SUPABASE_*` in Vercel + `.env.local`, redeployed. The
+  production site now uses the shared PostgreSQL DB — admin/imported+published questions reach all
+  students on all devices. Verified read + write end-to-end.
 - **2026-06-08** — Made the dashboard stat cards **clickable links** into Question Management
   filtered by status (`?status=draft` etc.). Replaced the Active/Unpublished tabs with **All /
   Published / Draft / Unpublished status pills** (live counts) that seed from the `?status=` query
