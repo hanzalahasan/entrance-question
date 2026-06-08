@@ -9,7 +9,7 @@
 > time a feature is added or changed in the app, this file is updated to match — automatically,
 > without being asked.
 >
-> **Last synced with codebase:** 2026-06-08 (Delete questions feature)
+> **Last synced with codebase:** 2026-06-08 (compact/expandable explanation modal)
 
 ---
 
@@ -644,6 +644,10 @@ Flashcard practice flow over the filtered list:
     "In depth" section; the modal widens to `max-w-3xl`.
   - The long explanation is split on blank lines (`\n{2,}`) into spaced paragraphs (the AI is
     prompted to return 3–5 short paragraphs with examples).
+  - The modal is **compact + scrollable by default** (`max-h-[55vh]`) so a long explanation never
+    overwhelms; a **bottom-left expand icon** (`Maximize2`) grows it to `max-h-[90vh]`, and the icon
+    toggles to a **shrink icon** (`Minimize2`) to collapse it back. State: `expanded` (reset per
+    question / on modal open). The expand toggle only shows once the long explanation is open.
   - **"Related questions (n)"** button → appears **only after the long explanation is opened**
     (`showLong`); switches to the **related panel**: a list of 5–10 questions sharing this
     question's concept/topic (via `related-question-service`), each clickable.
@@ -923,6 +927,8 @@ preview table (then AI-fill / import as above).
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-08** — Explanation modal is now **compact + scrollable by default** with a bottom-left
+  **expand/shrink icon** to toggle to full height (so long explanations don't intimidate students).
 - **2026-06-08** — Added a **Delete** feature for questions: per-row Delete + Bulk Delete (both with
   a confirm dialog), backed by new `remove`/`bulkRemove` on `QuestionRepo` (localStorage + Supabase).
 - **2026-06-08** — Long explanations now render as **multiple paragraphs with examples** (AI prompted

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Maximize2, Minimize2 } from "lucide-react";
 import type { Question } from "@/types/question";
 import QuestionOption from "./question-option";
 import {
@@ -26,6 +27,8 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
   // Inside the explanation modal: whether the long explanation is expanded, and
   // which panel is shown (the explanation vs the related-questions list).
   const [showLong, setShowLong] = useState(false);
+  // Compact (scrollable) vs expanded (tall) explanation modal.
+  const [expanded, setExpanded] = useState(false);
   const [explanationTab, setExplanationTab] = useState<"explanation" | "related">(
     "explanation"
   );
@@ -87,6 +90,7 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
     setShowAnswer(false);
     setShowExplanation(false);
     setShowLong(false);
+    setExpanded(false);
     setExplanationTab("explanation");
     setExplanationSeen(false);
     setHighlightedIndex(0);
@@ -95,6 +99,7 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
   function openExplanation() {
     setShowExplanation(true);
     setShowLong(false);
+    setExpanded(false);
     setExplanationTab("explanation");
     setExplanationSeen(true);
   }
@@ -390,14 +395,14 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
 
       {showExplanation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          {/* Grows when the long explanation / related list is open, and the
-              body scrolls so deep content stays usable. */}
+          {/* Compact + scrollable by default; the expand toggle grows it tall.
+              The body always scrolls so a long explanation never overwhelms. */}
           <div
-            className={`flex max-h-[88vh] w-full flex-col rounded-3xl bg-white shadow-xl transition-all dark:bg-slate-800 ${
+            className={`flex w-full flex-col rounded-3xl bg-white shadow-xl transition-all dark:bg-slate-800 ${
               showLong || explanationTab === "related"
                 ? "max-w-3xl"
                 : "max-w-xl"
-            }`}
+            } ${expanded ? "max-h-[90vh]" : "max-h-[55vh]"}`}
           >
             {/* Header */}
             <div className="flex items-center justify-between border-b border-gray-200 p-5 dark:border-slate-700">
@@ -493,24 +498,45 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
 
             {/* Footer actions */}
             {explanationTab === "explanation" && (
-              <div className="flex flex-wrap gap-2 border-t border-gray-200 p-4 dark:border-slate-700">
-                {hasLongExplanation && !showLong && (
-                  <button
-                    onClick={() => setShowLong(true)}
-                    className="rounded-2xl bg-blue-600 px-5 py-3 font-black text-white transition hover:bg-blue-700 active:scale-95"
-                  >
-                    Explain more ↓
-                  </button>
-                )}
-                {/* Related questions only surface after the long explanation is opened. */}
-                {showLong && relatedQuestions.length > 0 && (
-                  <button
-                    onClick={() => setExplanationTab("related")}
-                    className="rounded-2xl border border-gray-300 px-5 py-3 font-black text-gray-700 transition hover:bg-gray-50 active:scale-95 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700"
-                  >
-                    Related questions ({relatedQuestions.length})
-                  </button>
-                )}
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-200 p-4 dark:border-slate-700">
+                {/* Bottom-left: expand / shrink the window (only when long is open) */}
+                <div>
+                  {showLong && (
+                    <button
+                      onClick={() => setExpanded((e) => !e)}
+                      title={expanded ? "Shrink window" : "Expand window"}
+                      aria-label={expanded ? "Shrink window" : "Expand window"}
+                      className="grid h-11 w-11 place-items-center rounded-2xl border border-gray-300 text-gray-700 transition hover:bg-gray-50 active:scale-95 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700"
+                    >
+                      {expanded ? (
+                        <Minimize2 className="h-5 w-5" />
+                      ) : (
+                        <Maximize2 className="h-5 w-5" />
+                      )}
+                    </button>
+                  )}
+                </div>
+
+                {/* Bottom-right: primary actions */}
+                <div className="flex flex-wrap gap-2">
+                  {hasLongExplanation && !showLong && (
+                    <button
+                      onClick={() => setShowLong(true)}
+                      className="rounded-2xl bg-blue-600 px-5 py-3 font-black text-white transition hover:bg-blue-700 active:scale-95"
+                    >
+                      Explain more ↓
+                    </button>
+                  )}
+                  {/* Related questions only surface after the long explanation is opened. */}
+                  {showLong && relatedQuestions.length > 0 && (
+                    <button
+                      onClick={() => setExplanationTab("related")}
+                      className="rounded-2xl border border-gray-300 px-5 py-3 font-black text-gray-700 transition hover:bg-gray-50 active:scale-95 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700"
+                    >
+                      Related questions ({relatedQuestions.length})
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </div>
