@@ -440,12 +440,20 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
 
                   {showLong && hasLongExplanation && (
                     <div className="mt-5 border-t border-gray-200 pt-5 dark:border-slate-700">
-                      <h4 className="mb-2 text-sm font-black uppercase tracking-wide text-gray-500">
+                      <h4 className="mb-3 text-sm font-black uppercase tracking-wide text-gray-500">
                         In depth
                       </h4>
-                      <p className="whitespace-pre-line leading-relaxed text-gray-700 dark:text-slate-300">
-                        {currentQuestion.explanationLong}
-                      </p>
+                      <div className="space-y-3 leading-relaxed text-gray-700 dark:text-slate-300">
+                        {(currentQuestion.explanationLong || "")
+                          .split(/\n{2,}/)
+                          .map((para) => para.trim())
+                          .filter(Boolean)
+                          .map((para, i) => (
+                            <p key={i} className="whitespace-pre-line">
+                              {para}
+                            </p>
+                          ))}
+                      </div>
                     </div>
                   )}
                 </>
@@ -494,7 +502,8 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
                     Explain more ↓
                   </button>
                 )}
-                {relatedQuestions.length > 0 && (
+                {/* Related questions only surface after the long explanation is opened. */}
+                {showLong && relatedQuestions.length > 0 && (
                   <button
                     onClick={() => setExplanationTab("related")}
                     className="rounded-2xl border border-gray-300 px-5 py-3 font-black text-gray-700 transition hover:bg-gray-50 active:scale-95 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700"

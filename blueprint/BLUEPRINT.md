@@ -640,8 +640,11 @@ Flashcard practice flow over the filtered list:
   - **Explanation panel:** short `explanation` (+ optional image). An **"Explain more ↓"** button
     (shown only when `explanationLong` is non-empty) reveals the long explanation in a scrollable
     "In depth" section; the modal widens to `max-w-3xl`.
-  - **"Related questions (n)"** button → switches to the **related panel**: a list of 5–10
-    questions sharing this question's concept/topic (via `related-question-service`), each clickable.
+  - The long explanation is split on blank lines (`\n{2,}`) into spaced paragraphs (the AI is
+    prompted to return 3–5 short paragraphs with examples).
+  - **"Related questions (n)"** button → appears **only after the long explanation is opened**
+    (`showLong`); switches to the **related panel**: a list of 5–10 questions sharing this
+    question's concept/topic (via `related-question-service`), each clickable.
   - Clicking a related question (`goToRelatedQuestion`) closes the modal and loads that question
     into the card — even if it's outside the active filter (the card resolves the current question
     from the `pool` prop = all published questions). "Next" afterward resumes normal random practice.

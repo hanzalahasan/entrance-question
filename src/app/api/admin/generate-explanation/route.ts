@@ -51,15 +51,20 @@ Produce TWO explanations and concept tags:
 1. "explanation" — a SHORT explanation: 1 to 2 crisp sentences stating why the correct answer is
    right. This is what students see first.
 
-2. "longExplanation" — a THOROUGH explanation (4 to 8 sentences) that builds deep understanding of
-   the concept, not just this question:
-   - why the correct answer is correct, grounded in the concept;
-   - briefly why each other option is wrong / what it actually is;
-   - the surrounding concept, a useful intuition or analogy, and a common exam trap.
+2. "longExplanation" — a THOROUGH explanation that builds deep understanding of the concept, not
+   just this question. FORMAT IT AS 3 TO 5 SHORT PARAGRAPHS separated by a blank line (use "\n\n"
+   between paragraphs — never return one big block). A good structure:
+   - Para 1: the core concept and why the correct answer is right.
+   - Para 2: a concrete EXAMPLE, analogy, or worked illustration that makes it click.
+   - Para 3: briefly why each other option is wrong / what it actually is.
+   - Para 4 (optional): related context, a formula, or a common exam trap to avoid.
+   Keep each paragraph short (2–4 sentences) and easy to read. Add an example wherever it aids
+   understanding.
 
 3. "concepts" — 3 to 6 lowercase tag phrases capturing the key ideas (used to link related questions).
 
-Rules: be accurate and exam-appropriate, do NOT invent facts, plain text (no markdown headers).
+Rules: be accurate and exam-appropriate, do NOT invent facts, plain text (no markdown headers or
+bullet characters — just paragraphs separated by blank lines).
 
 Respond with valid JSON only, exactly:
 {"explanation":"...","longExplanation":"...","concepts":["...","..."]}`;
