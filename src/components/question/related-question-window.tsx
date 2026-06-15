@@ -7,10 +7,29 @@ import QuestionOption from "./question-option";
 
 const WIDTH = 560;
 
-// Initial window position: offset from the left so part of the main question
-// stays visible behind it. Computed client-side (window is always present here).
+const POS_KEY = "eq_related_pos";
+
+// Keep a point within the viewport.
+function clamp(x: number, y: number) {
+  return {
+    x: Math.min(Math.max(8, x), Math.max(8, window.innerWidth - 60)),
+    y: Math.min(Math.max(0, y), Math.max(0, window.innerHeight - 60)),
+  };
+}
+
+// Initial window position: the user's last-placed spot if remembered, else
+// offset from the left so part of the main question stays visible behind it.
 function initialPos(): { x: number; y: number } | null {
   if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(POS_KEY);
+    if (raw) {
+      const p = JSON.parse(raw);
+      if (p && typeof p.x === "number" && typeof p.y === "number") {
+        return clamp(p.x, p.y);
+      }
+    }
+  } catch {}
   const w = Math.min(WIDTH, window.innerWidth - 24);
   return {
     x: Math.min(
@@ -58,32 +77,34 @@ export default function RelatedQuestionWindow({
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [showExpl, setShowExpl] = useState(false);
-  const [showExplLong, setShowExplLong] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(initialPos);
 
   const dragRef = useRef<
     | { startX: number; startY: number; origX: number; origY: number }
     | null
   >(null);
+  // Latest position, so we can persist it when a drag ends.
+  const posRef = useRef<{ x: number; y: number } | null>(pos);
 
-  // Drag-to-move via the header.
+  // Drag-to-move via the header; the spot is remembered for next time.
   useEffect(() => {
     function onMove(e: PointerEvent) {
       const d = dragRef.current;
       if (!d) return;
-      const next = {
-        x: Math.min(
-          Math.max(12 - WIDTH + 80, d.origX + (e.clientX - d.startX)),
-          window.innerWidth - 60
-        ),
-        y: Math.min(
-          Math.max(0, d.origY + (e.clientY - d.startY)),
-          window.innerHeight - 60
-        ),
-      };
+      const next = clamp(
+        d.origX + (e.clientX - d.startX),
+        d.origY + (e.clientY - d.startY)
+      );
+      posRef.current = next;
       setPos(next);
     }
     function onUp() {
+      if (dragRef.current && posRef.current) {
+        try {
+          localStorage.setItem(POS_KEY, JSON.stringify(posRef.current));
+        } catch {}
+      }
       dragRef.current = null;
     }
     window.addEventListener("pointermove", onMove);
@@ -94,14 +115,89 @@ export default function RelatedQuestionWindow({
     };
   }, []);
 
-  // Escape closes related mode.
+  // Keyboard — mirrors the main card: ↑/↓ move the highlight, ←/→ prev/next,
+  // Enter steps select → reveal → explanation → next, Esc closes.
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+    function onKey(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) {
+        return;
+      }
+      if (questions.length === 0) return;
+      const cur = questions[index];
+
+      const reset = () => {
+        setSelectedAnswer(null);
+        setShowAnswer(false);
+        setShowExpl(false);
+        setHighlightedIndex(0);
+      };
+      const next = () => {
+        if (index < questions.length - 1) {
+          setIndex(index + 1);
+          reset();
+        }
+      };
+      const prev = () => {
+        if (index > 0) {
+          setIndex(index - 1);
+          reset();
+        }
+      };
+
+      switch (event.key) {
+        case "Escape":
+          event.preventDefault();
+          onClose();
+          break;
+        case "ArrowDown":
+          event.preventDefault();
+          setHighlightedIndex((i) => Math.min(cur.options.length - 1, i + 1));
+          break;
+        case "ArrowUp":
+          event.preventDefault();
+          setHighlightedIndex((i) => Math.max(0, i - 1));
+          break;
+        case "ArrowRight":
+          event.preventDefault();
+          next();
+          break;
+        case "ArrowLeft":
+          event.preventDefault();
+          prev();
+          break;
+        case "Enter": {
+          event.preventDefault();
+          const answered = selectedAnswer !== null;
+          const correct = selectedAnswer === cur.answer;
+          const locked = correct || showAnswer;
+          if (!answered) {
+            const option = cur.options[highlightedIndex];
+            if (option && !locked) setSelectedAnswer(option.key);
+          } else if (correct) {
+            next();
+          } else if (!showAnswer) {
+            setShowAnswer(true);
+          } else if (cur.explanation?.trim() && !showExpl) {
+            setShowExpl(true);
+          } else {
+            next();
+          }
+          break;
+        }
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [
+    questions,
+    index,
+    selectedAnswer,
+    showAnswer,
+    showExpl,
+    highlightedIndex,
+    onClose,
+  ]);
 
   if (questions.length === 0 || !pos) return null;
 
@@ -134,7 +230,11 @@ export default function RelatedQuestionWindow({
     setSelectedAnswer(null);
     setShowAnswer(false);
     setShowExpl(false);
-    setShowExplLong(false);
+    setHighlightedIndex(0);
+  }
+
+  function selectAnswer(key: string) {
+    if (!isLocked) setSelectedAnswer(key);
   }
 
   function goNext() {
@@ -154,7 +254,6 @@ export default function RelatedQuestionWindow({
   const subjectLabel = current.subjectName || `Subject ${current.subjectId}`;
   const topicLabel = current.topicName || `Topic ${current.topicId}`;
   const hasExpl = Boolean(current.explanation?.trim());
-  const hasLong = Boolean(current.explanationLong?.trim());
 
   return (
     // Full-screen, click-through layer so the main card behind stays hoverable;
@@ -218,7 +317,7 @@ export default function RelatedQuestionWindow({
           </h2>
 
           <div className="space-y-3">
-            {current.options.map((option) => (
+            {current.options.map((option, idx) => (
               <QuestionOption
                 key={option.key}
                 optionKey={option.key}
@@ -227,8 +326,11 @@ export default function RelatedQuestionWindow({
                 type={option.type}
                 status={getOptionStatus(option.key)}
                 disabled={isLocked}
+                highlighted={!isAnswered && idx === highlightedIndex}
+                onMouseEnter={() => setHighlightedIndex(idx)}
                 onClick={() => {
-                  if (!isLocked) setSelectedAnswer(option.key);
+                  setHighlightedIndex(idx);
+                  selectAnswer(option.key);
                 }}
               />
             ))}
@@ -255,33 +357,6 @@ export default function RelatedQuestionWindow({
               >
                 {renderRich(current.explanation)}
               </p>
-
-              {hasLong && !showExplLong && (
-                <button
-                  onClick={() => setShowExplLong(true)}
-                  className="mt-3 rounded-xl bg-blue-600 px-4 py-2 text-sm font-black text-white transition hover:bg-blue-700 active:scale-95"
-                >
-                  Explain more ↓
-                </button>
-              )}
-
-              {showExplLong && hasLong && (
-                <div className="mt-4 space-y-3 border-t border-gray-200 pt-4 dark:border-slate-700">
-                  {(current.explanationLong || "")
-                    .split(/\n{2,}/)
-                    .map((para) => para.trim())
-                    .filter(Boolean)
-                    .map((para, i) => (
-                      <p
-                        key={i}
-                        style={{ fontSize }}
-                        className="whitespace-pre-line leading-relaxed text-gray-700 dark:text-slate-300"
-                      >
-                        {renderRich(para)}
-                      </p>
-                    ))}
-                </div>
-              )}
             </div>
           )}
         </div>

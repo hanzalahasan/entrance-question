@@ -71,6 +71,9 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
   // brings it back into focus (tracked here rather than via CSS :hover, which
   // is unreliable under the click-through overlays).
   const [originHovered, setOriginHovered] = useState(false);
+  // Same blur-unless-hovered treatment for the explanation window while the
+  // related window is open.
+  const [explHovered, setExplHovered] = useState(false);
   // Reader font size for the explanation text (px), adjustable via a slider.
   // Seeded from the persisted value (the explanation isn't in the initial DOM,
   // so reading localStorage here can't cause a hydration mismatch).
@@ -351,6 +354,7 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
   function startRelatedSession(related: Question[]) {
     if (related.length === 0) return;
     setOriginHovered(false);
+    setExplHovered(false);
     setRelatedSession(related);
   }
 
@@ -654,11 +658,15 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
           {/* Movable always. Short = small, auto-height. Long = sized + resizable. */}
           <div
             ref={winRef}
-            style={
-              showLong
-                ? { left: winPos.x, top: winPos.y, width: winSize.w, height: winSize.h }
-                : { left: winPos.x, top: winPos.y, width: winSize.w }
-            }
+            onMouseEnter={() => setExplHovered(true)}
+            onMouseLeave={() => setExplHovered(false)}
+            style={{
+              left: winPos.x,
+              top: winPos.y,
+              width: winSize.w,
+              ...(showLong ? { height: winSize.h } : {}),
+              ...(relatedSession && !explHovered ? { filter: "blur(2.5px)" } : {}),
+            }}
             className={`pointer-events-auto absolute flex flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-slate-800 ${
               showLong ? "" : "max-h-[60vh]"
             }`}

@@ -931,6 +931,14 @@ preview table (then AI-fill / import as above).
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-15** — **Related-question window refinements.** (1) Removed "Explain more" inside the
+  related window — it now shows only the short explanation. (2) The window **remembers its position**
+  (persisted to `eq_related_pos`) and reopens exactly where the user last placed it. (3) The
+  **explanation window also blurs** (clear-on-hover) while the related window is open, matching the
+  main card. (4) **Arrows + Enter now drive the related window** like the main card (↑/↓ highlight,
+  ←/→ prev/next, stepped Enter: select → reveal → explanation → next, Esc closes) via a self-contained
+  keydown effect.
+
 - **2026-06-15** — **Explanation text size slider.** Added an `A ──○── A` range slider in the
   explanation window header that scales the short + long explanation text (12–28px), persisted in
   `localStorage` (`eq_expl_font`) and shared with the related-question window's explanation.
