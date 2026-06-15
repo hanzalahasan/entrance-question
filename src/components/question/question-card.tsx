@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Maximize2, Minimize2 } from "lucide-react";
 import type { Question } from "@/types/question";
 import QuestionOption from "./question-option";
+import RelatedQuestionWindow from "./related-question-window";
 import {
   getRandomQuestionId,
   saveSeenQuestionId,
@@ -63,13 +64,21 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
   // Remembered window size + position (persisted) — reused on every open.
   const savedSizeRef = useRef<{ w: number; h: number } | null>(null);
   const savedPosRef = useRef<{ x: number; y: number } | null>(null);
-  // When the user chooses "Practice related questions", the related questions
-  // are loaded one-by-one in the normal card as a short session; afterwards
-  // normal random practice resumes. Null when no session is running.
-  const [relatedSession, setRelatedSession] = useState<{
-    ids: number[];
-    index: number;
-  } | null>(null);
+  // The related questions currently shown in the floating related-question
+  // window (opened on top of the blurred main card). Null when closed.
+  const [relatedSession, setRelatedSession] = useState<Question[] | null>(null);
+  // While the related window is open the main card is blurred; hovering it
+  // brings it back into focus (tracked here rather than via CSS :hover, which
+  // is unreliable under the click-through overlays).
+  const [originHovered, setOriginHovered] = useState(false);
+  // Reader font size for the explanation text (px), adjustable via a slider.
+  // Seeded from the persisted value (the explanation isn't in the initial DOM,
+  // so reading localStorage here can't cause a hydration mismatch).
+  const [explFontSize, setExplFontSize] = useState<number>(() => {
+    if (typeof window === "undefined") return 16;
+    const n = Number(localStorage.getItem("eq_expl_font"));
+    return Number.isFinite(n) && n >= 12 && n <= 28 ? n : 16;
+  });
   // Whether the explanation has been opened at least once this question — lets
   // the Enter flow know to advance (rather than re-open) after it's been closed.
   const [explanationSeen, setExplanationSeen] = useState(false);
@@ -132,6 +141,13 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
       }
     } catch {}
   }, []);
+
+  function changeFontSize(size: number) {
+    setExplFontSize(size);
+    try {
+      localStorage.setItem("eq_expl_font", String(size));
+    } catch {}
+  }
 
   // Drag-to-move (header) and drag-to-resize (any edge/corner).
   useEffect(() => {
@@ -330,32 +346,12 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
     }
   }
 
-  // Start a related-questions practice session: close the explanation and load
-  // the related questions one-by-one in the normal card. They may sit outside
-  // the active filter — that's fine; finishing the session (or Exit) resumes
-  // normal random practice within the filter. `ids` is captured up front so the
-  // set stays stable even though "related" is recomputed per question.
-  function startRelatedSession(ids: number[]) {
-    if (ids.length === 0) return;
-    setShowExplanation(false);
-    setPreviousQuestionId(currentQuestionId);
-    setRelatedSession({ ids, index: 0 });
-    setCurrentQuestionId(ids[0]);
-    setHasUsedPrevious(false);
-    saveSeenQuestionId(ids[0]);
-    resetQuestionState();
-  }
-
-  // Leave a related session early and jump to a fresh random question.
-  function exitRelatedSession() {
-    setRelatedSession(null);
-    const nextId = getRandomQuestionId(questions, currentQuestionId ?? undefined);
-    if (!nextId) return;
-    setPreviousQuestionId(currentQuestionId);
-    setCurrentQuestionId(nextId);
-    setHasUsedPrevious(false);
-    saveSeenQuestionId(nextId);
-    resetQuestionState();
+  // Open the floating related-questions window on top of the (now-blurred) main
+  // card. The explanation window stays open behind it; the main card stays put.
+  function startRelatedSession(related: Question[]) {
+    if (related.length === 0) return;
+    setOriginHovered(false);
+    setRelatedSession(related);
   }
 
   if (questions.length === 0) {
@@ -424,23 +420,6 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
   function goNext() {
     pulseNav("next");
 
-    // Inside a related session, advance through the queue; when it's exhausted,
-    // drop back to normal random practice.
-    if (relatedSession) {
-      const nextIndex = relatedSession.index + 1;
-      if (nextIndex < relatedSession.ids.length) {
-        const nextId = relatedSession.ids[nextIndex];
-        setPreviousQuestionId(currentQuestion.id);
-        setRelatedSession({ ...relatedSession, index: nextIndex });
-        setCurrentQuestionId(nextId);
-        setHasUsedPrevious(false);
-        saveSeenQuestionId(nextId);
-        resetQuestionState();
-        return;
-      }
-      setRelatedSession(null);
-    }
-
     const nextQuestionId = getRandomQuestionId(questions, currentQuestion.id);
 
     if (!nextQuestionId) return;
@@ -453,16 +432,6 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
   }
 
   function goPrevious() {
-    // Inside a related session, step back through the queue.
-    if (relatedSession && relatedSession.index > 0) {
-      pulseNav("prev");
-      const prevIndex = relatedSession.index - 1;
-      setRelatedSession({ ...relatedSession, index: prevIndex });
-      setCurrentQuestionId(relatedSession.ids[prevIndex]);
-      resetQuestionState();
-      return;
-    }
-
     if (previousQuestionId === null || hasUsedPrevious) return;
 
     pulseNav("prev");
@@ -472,9 +441,7 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
     resetQuestionState();
   }
 
-  const canGoPrevious = relatedSession
-    ? relatedSession.index > 0
-    : previousQuestionId !== null && !hasUsedPrevious;
+  const canGoPrevious = previousQuestionId !== null && !hasUsedPrevious;
 
   // Latest keyboard handler (re-assigned each render so closures stay fresh):
   //  • Up / Down  → move the option highlight
@@ -486,6 +453,10 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
     if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) {
       return;
     }
+
+    // The related-question window owns the keyboard while it's open — don't let
+    // keys (Enter especially) leak into the main card behind it.
+    if (relatedSession) return;
 
     // While the explanation is open, Enter or Escape closes it.
     if (showExplanation) {
@@ -542,22 +513,16 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
 
   return (
     <>
-      <div className="w-full max-w-3xl rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800 md:p-8">
-        {relatedSession && (
-          <div className="mb-4 flex items-center justify-between rounded-2xl bg-blue-50 px-4 py-2 text-sm font-bold text-blue-700 dark:bg-slate-700 dark:text-blue-300">
-            <span>
-              Related practice — Question {relatedSession.index + 1} of{" "}
-              {relatedSession.ids.length}
-            </span>
-            <button
-              onClick={exitRelatedSession}
-              className="cursor-pointer rounded-full border border-blue-300 px-3 py-1 text-xs font-bold text-blue-700 transition hover:bg-blue-100 active:scale-95 dark:border-slate-500 dark:text-blue-300 dark:hover:bg-slate-600"
-            >
-              Exit
-            </button>
-          </div>
-        )}
-
+      {/* When related-question mode is on, the main card blurs to push focus to
+          the floating related window; hovering it brings it back into focus. */}
+      <div
+        onMouseEnter={() => setOriginHovered(true)}
+        onMouseLeave={() => setOriginHovered(false)}
+        style={
+          relatedSession && !originHovered ? { filter: "blur(2.5px)" } : undefined
+        }
+        className="w-full max-w-3xl rounded-3xl border border-gray-200 bg-white p-5 shadow-sm transition duration-200 dark:border-slate-700 dark:bg-slate-800 md:p-8"
+      >
         <div className="mb-4 flex flex-wrap justify-center gap-2">
           <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
             {subjectLabel}
@@ -681,7 +646,11 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
       </div>
 
       {showExplanation && winPos && winSize && (
-        <div className="fixed inset-0 z-50 bg-black/50">
+        <div
+          className={`fixed inset-0 z-50 ${
+            relatedSession ? "pointer-events-none" : "bg-black/50"
+          }`}
+        >
           {/* Movable always. Short = small, auto-height. Long = sized + resizable. */}
           <div
             ref={winRef}
@@ -690,7 +659,7 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
                 ? { left: winPos.x, top: winPos.y, width: winSize.w, height: winSize.h }
                 : { left: winPos.x, top: winPos.y, width: winSize.w }
             }
-            className={`absolute flex flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-slate-800 ${
+            className={`pointer-events-auto absolute flex flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-slate-800 ${
               showLong ? "" : "max-h-[60vh]"
             }`}
           >
@@ -725,6 +694,30 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
               </h3>
 
               <div className="flex items-center gap-2">
+                {/* Font-size slider for the explanation text */}
+                <div
+                  onPointerDown={(e) => e.stopPropagation()}
+                  className="flex items-center gap-1.5 rounded-full border border-gray-300 px-2.5 py-1 dark:border-slate-600"
+                  title="Text size"
+                >
+                  <span className="text-xs font-bold text-gray-500 dark:text-slate-400">
+                    A
+                  </span>
+                  <input
+                    type="range"
+                    min={12}
+                    max={28}
+                    step={1}
+                    value={explFontSize}
+                    onChange={(e) => changeFontSize(Number(e.target.value))}
+                    className="h-1 w-20 cursor-pointer accent-blue-600"
+                    aria-label="Explanation text size"
+                  />
+                  <span className="text-base font-bold text-gray-500 dark:text-slate-400">
+                    A
+                  </span>
+                </div>
+
                 {/* Expand / shrink — only for the long explanation, on the RIGHT */}
                 {showLong && (
                   <button
@@ -762,7 +755,10 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
                 />
               )}
 
-              <p className="leading-relaxed text-gray-700 dark:text-slate-300">
+              <p
+                style={{ fontSize: explFontSize }}
+                className="leading-relaxed text-gray-700 dark:text-slate-300"
+              >
                 {renderRich(currentQuestion.explanation)}
               </p>
 
@@ -771,7 +767,10 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
                   <h4 className="mb-3 text-sm font-black uppercase tracking-wide text-gray-500">
                     In depth
                   </h4>
-                  <div className="space-y-3 leading-relaxed text-gray-700 dark:text-slate-300">
+                  <div
+                    style={{ fontSize: explFontSize }}
+                    className="space-y-3 leading-relaxed text-gray-700 dark:text-slate-300"
+                  >
                     {(currentQuestion.explanationLong || "")
                       .split(/\n{2,}/)
                       .map((para) => para.trim())
@@ -798,13 +797,11 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
                   </button>
                 )}
                 {/* Related questions only surface after the long explanation is
-                    opened. Clicking starts a short practice session of them in
-                    the normal question window. */}
+                    opened. Clicking opens them in a floating window on top of
+                    the (blurred) main card; the explanation stays open. */}
                 {showLong && relatedQuestions.length > 0 && (
                   <button
-                    onClick={() =>
-                      startRelatedSession(relatedQuestions.map((q) => q.id))
-                    }
+                    onClick={() => startRelatedSession(relatedQuestions)}
                     className="rounded-2xl border border-gray-300 px-5 py-3 font-black text-gray-700 transition hover:bg-gray-50 active:scale-95 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700"
                   >
                     Related questions ({relatedQuestions.length})
@@ -814,6 +811,14 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
             )}
           </div>
         </div>
+      )}
+
+      {relatedSession && (
+        <RelatedQuestionWindow
+          questions={relatedSession}
+          fontSize={explFontSize}
+          onClose={() => setRelatedSession(null)}
+        />
       )}
     </>
   );

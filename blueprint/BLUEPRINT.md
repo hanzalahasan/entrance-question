@@ -9,7 +9,7 @@
 > time a feature is added or changed in the app, this file is updated to match — automatically,
 > without being asked.
 >
-> **Last synced with codebase:** 2026-06-15 (related questions = practice session)
+> **Last synced with codebase:** 2026-06-15 (related questions = floating window + font slider)
 
 ---
 
@@ -931,14 +931,19 @@ preview table (then AI-fill / import as above).
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
-- **2026-06-15** — **Related questions are now a practice session.** Clicking "Related questions (N)"
-  (surfaced after "Explain more") closes the explanation popup and loads those related questions
-  **one-by-one in the normal question window**, with a "Related practice — Question X of N" banner +
-  an **Exit** button. Previous/Next step through the queue; finishing the last one (or Exit) resumes
-  normal random practice within the active filter. Replaces the old in-popup list/tab — removed the
-  `explanationTab` state, the related-list panel, and `goToRelatedQuestion`; added a `relatedSession`
-  ({ids, index}) state with `startRelatedSession` / `exitRelatedSession` and session-aware
-  `goNext`/`goPrevious`/`canGoPrevious` in `question-card.tsx`.
+- **2026-06-15** — **Explanation text size slider.** Added an `A ──○── A` range slider in the
+  explanation window header that scales the short + long explanation text (12–28px), persisted in
+  `localStorage` (`eq_expl_font`) and shared with the related-question window's explanation.
+- **2026-06-15** — **Related questions open in a floating window (not inline).** Clicking "Related
+  questions (N)" (surfaced after "Explain more") now opens a **separate, draggable window on top**
+  (`related-question-window.tsx`) while the **explanation window stays open** and the **main card
+  stays put but blurs** to shift focus. Hovering the main card un-blurs it (JS hover state, since the
+  overlays are click-through `pointer-events-none`); moving away re-blurs. The related window runs its
+  own select → Reveal → **Explanation** (short + "Explain more" long) flow, has Previous/Next across
+  the N questions, an **X** (top-right) to close, and "Related question X of N". While it's open the
+  main card's keyboard handler is disabled so Enter doesn't leak through. Replaces the earlier
+  inline-session attempt — `relatedSession` is now a `Question[]`; removed the in-card banner and the
+  session-aware nav.
 - **2026-06-08** — Explanation window now **remembers its position** too: short window opens lower
   (question stays visible) and at the last-moved spot; **Explain more opens from that same spot**.
 - **2026-06-08** — Explanation window split into two modes: **short** = small + movable only;
