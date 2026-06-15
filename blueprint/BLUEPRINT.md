@@ -9,7 +9,7 @@
 > time a feature is added or changed in the app, this file is updated to match — automatically,
 > without being asked.
 >
-> **Last synced with codebase:** 2026-06-08 (explanation window remembers position)
+> **Last synced with codebase:** 2026-06-15 (related questions = practice session)
 
 ---
 
@@ -931,6 +931,14 @@ preview table (then AI-fill / import as above).
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-15** — **Related questions are now a practice session.** Clicking "Related questions (N)"
+  (surfaced after "Explain more") closes the explanation popup and loads those related questions
+  **one-by-one in the normal question window**, with a "Related practice — Question X of N" banner +
+  an **Exit** button. Previous/Next step through the queue; finishing the last one (or Exit) resumes
+  normal random practice within the active filter. Replaces the old in-popup list/tab — removed the
+  `explanationTab` state, the related-list panel, and `goToRelatedQuestion`; added a `relatedSession`
+  ({ids, index}) state with `startRelatedSession` / `exitRelatedSession` and session-aware
+  `goNext`/`goPrevious`/`canGoPrevious` in `question-card.tsx`.
 - **2026-06-08** — Explanation window now **remembers its position** too: short window opens lower
   (question stays visible) and at the last-moved spot; **Explain more opens from that same spot**.
 - **2026-06-08** — Explanation window split into two modes: **short** = small + movable only;

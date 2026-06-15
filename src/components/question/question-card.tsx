@@ -63,9 +63,13 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
   // Remembered window size + position (persisted) — reused on every open.
   const savedSizeRef = useRef<{ w: number; h: number } | null>(null);
   const savedPosRef = useRef<{ x: number; y: number } | null>(null);
-  const [explanationTab, setExplanationTab] = useState<"explanation" | "related">(
-    "explanation"
-  );
+  // When the user chooses "Practice related questions", the related questions
+  // are loaded one-by-one in the normal card as a short session; afterwards
+  // normal random practice resumes. Null when no session is running.
+  const [relatedSession, setRelatedSession] = useState<{
+    ids: number[];
+    index: number;
+  } | null>(null);
   // Whether the explanation has been opened at least once this question — lets
   // the Enter flow know to advance (rather than re-open) after it's been closed.
   const [explanationSeen, setExplanationSeen] = useState(false);
@@ -94,6 +98,7 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
     setCurrentQuestionId(firstQuestionId);
     setPreviousQuestionId(null);
     setHasUsedPrevious(false);
+    setRelatedSession(null);
     resetQuestionState();
 
     if (firstQuestionId) {
@@ -216,7 +221,6 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
     setShowExplanation(false);
     setShowLong(false);
     setExpanded(false);
-    setExplanationTab("explanation");
     setExplanationSeen(false);
     setHighlightedIndex(0);
   }
@@ -241,7 +245,6 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
     setShowExplanation(true);
     setShowLong(false);
     setExpanded(false);
-    setExplanationTab("explanation");
     setExplanationSeen(true);
     const w = Math.min(480, window.innerWidth - 24);
     setWinSize({ w, h: Math.round(window.innerHeight * 0.4) });
@@ -327,14 +330,31 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
     }
   }
 
-  // Jump to a related question (it may be outside the active filter — that's
-  // fine; "Next" afterwards resumes normal random practice within the filter).
-  function goToRelatedQuestion(id: number) {
+  // Start a related-questions practice session: close the explanation and load
+  // the related questions one-by-one in the normal card. They may sit outside
+  // the active filter — that's fine; finishing the session (or Exit) resumes
+  // normal random practice within the filter. `ids` is captured up front so the
+  // set stays stable even though "related" is recomputed per question.
+  function startRelatedSession(ids: number[]) {
+    if (ids.length === 0) return;
     setShowExplanation(false);
     setPreviousQuestionId(currentQuestionId);
-    setCurrentQuestionId(id);
+    setRelatedSession({ ids, index: 0 });
+    setCurrentQuestionId(ids[0]);
     setHasUsedPrevious(false);
-    saveSeenQuestionId(id);
+    saveSeenQuestionId(ids[0]);
+    resetQuestionState();
+  }
+
+  // Leave a related session early and jump to a fresh random question.
+  function exitRelatedSession() {
+    setRelatedSession(null);
+    const nextId = getRandomQuestionId(questions, currentQuestionId ?? undefined);
+    if (!nextId) return;
+    setPreviousQuestionId(currentQuestionId);
+    setCurrentQuestionId(nextId);
+    setHasUsedPrevious(false);
+    saveSeenQuestionId(nextId);
     resetQuestionState();
   }
 
@@ -404,6 +424,23 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
   function goNext() {
     pulseNav("next");
 
+    // Inside a related session, advance through the queue; when it's exhausted,
+    // drop back to normal random practice.
+    if (relatedSession) {
+      const nextIndex = relatedSession.index + 1;
+      if (nextIndex < relatedSession.ids.length) {
+        const nextId = relatedSession.ids[nextIndex];
+        setPreviousQuestionId(currentQuestion.id);
+        setRelatedSession({ ...relatedSession, index: nextIndex });
+        setCurrentQuestionId(nextId);
+        setHasUsedPrevious(false);
+        saveSeenQuestionId(nextId);
+        resetQuestionState();
+        return;
+      }
+      setRelatedSession(null);
+    }
+
     const nextQuestionId = getRandomQuestionId(questions, currentQuestion.id);
 
     if (!nextQuestionId) return;
@@ -416,6 +453,16 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
   }
 
   function goPrevious() {
+    // Inside a related session, step back through the queue.
+    if (relatedSession && relatedSession.index > 0) {
+      pulseNav("prev");
+      const prevIndex = relatedSession.index - 1;
+      setRelatedSession({ ...relatedSession, index: prevIndex });
+      setCurrentQuestionId(relatedSession.ids[prevIndex]);
+      resetQuestionState();
+      return;
+    }
+
     if (previousQuestionId === null || hasUsedPrevious) return;
 
     pulseNav("prev");
@@ -425,7 +472,9 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
     resetQuestionState();
   }
 
-  const canGoPrevious = previousQuestionId !== null && !hasUsedPrevious;
+  const canGoPrevious = relatedSession
+    ? relatedSession.index > 0
+    : previousQuestionId !== null && !hasUsedPrevious;
 
   // Latest keyboard handler (re-assigned each render so closures stay fresh):
   //  • Up / Down  → move the option highlight
@@ -494,6 +543,21 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
   return (
     <>
       <div className="w-full max-w-3xl rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800 md:p-8">
+        {relatedSession && (
+          <div className="mb-4 flex items-center justify-between rounded-2xl bg-blue-50 px-4 py-2 text-sm font-bold text-blue-700 dark:bg-slate-700 dark:text-blue-300">
+            <span>
+              Related practice — Question {relatedSession.index + 1} of{" "}
+              {relatedSession.ids.length}
+            </span>
+            <button
+              onClick={exitRelatedSession}
+              className="cursor-pointer rounded-full border border-blue-300 px-3 py-1 text-xs font-bold text-blue-700 transition hover:bg-blue-100 active:scale-95 dark:border-slate-500 dark:text-blue-300 dark:hover:bg-slate-600"
+            >
+              Exit
+            </button>
+          </div>
+        )}
+
         <div className="mb-4 flex flex-wrap justify-center gap-2">
           <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
             {subjectLabel}
@@ -656,19 +720,9 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
               onPointerDown={startMove}
               className="flex cursor-move select-none items-center justify-between border-b border-gray-200 p-5 dark:border-slate-700"
             >
-              {explanationTab === "related" ? (
-                <button
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={() => setExplanationTab("explanation")}
-                  className="cursor-pointer text-sm font-black text-blue-600 transition hover:text-blue-700"
-                >
-                  ← Back to explanation
-                </button>
-              ) : (
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                  Explanation
-                </h3>
-              )}
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                Explanation
+              </h3>
 
               <div className="flex items-center gap-2">
                 {/* Expand / shrink — only for the long explanation, on the RIGHT */}
@@ -700,75 +754,40 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
 
             {/* Scrollable body */}
             <div className="flex-1 overflow-y-auto p-6">
-              {explanationTab === "explanation" ? (
-                <>
-                  {currentQuestion.media?.explanationImageUrl && (
-                    <img
-                      src={currentQuestion.media.explanationImageUrl}
-                      alt="Explanation diagram"
-                      className="mb-4 max-h-80 rounded-2xl border border-gray-200 object-contain"
-                    />
-                  )}
+              {currentQuestion.media?.explanationImageUrl && (
+                <img
+                  src={currentQuestion.media.explanationImageUrl}
+                  alt="Explanation diagram"
+                  className="mb-4 max-h-80 rounded-2xl border border-gray-200 object-contain"
+                />
+              )}
 
-                  <p className="leading-relaxed text-gray-700 dark:text-slate-300">
-                    {renderRich(currentQuestion.explanation)}
-                  </p>
+              <p className="leading-relaxed text-gray-700 dark:text-slate-300">
+                {renderRich(currentQuestion.explanation)}
+              </p>
 
-                  {showLong && hasLongExplanation && (
-                    <div className="mt-5 border-t border-gray-200 pt-5 dark:border-slate-700">
-                      <h4 className="mb-3 text-sm font-black uppercase tracking-wide text-gray-500">
-                        In depth
-                      </h4>
-                      <div className="space-y-3 leading-relaxed text-gray-700 dark:text-slate-300">
-                        {(currentQuestion.explanationLong || "")
-                          .split(/\n{2,}/)
-                          .map((para) => para.trim())
-                          .filter(Boolean)
-                          .map((para, i) => (
-                            <p key={i} className="whitespace-pre-line">
-                              {renderRich(para)}
-                            </p>
-                          ))}
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div>
-                  <p className="mb-4 text-sm font-semibold text-gray-500 dark:text-slate-400">
-                    Practice {relatedQuestions.length} question
-                    {relatedQuestions.length !== 1 ? "s" : ""} related to this concept.
-                  </p>
-                  <div className="space-y-3">
-                    {relatedQuestions.map((rq) => (
-                      <button
-                        key={rq.id}
-                        onClick={() => goToRelatedQuestion(rq.id)}
-                        className="block w-full rounded-2xl border border-gray-200 p-4 text-left transition hover:border-blue-400 hover:bg-blue-50 active:scale-[0.99] dark:border-slate-600 dark:hover:border-blue-500 dark:hover:bg-slate-700"
-                      >
-                        <p className="font-semibold text-gray-900 dark:text-white">
-                          {rq.question}
+              {showLong && hasLongExplanation && (
+                <div className="mt-5 border-t border-gray-200 pt-5 dark:border-slate-700">
+                  <h4 className="mb-3 text-sm font-black uppercase tracking-wide text-gray-500">
+                    In depth
+                  </h4>
+                  <div className="space-y-3 leading-relaxed text-gray-700 dark:text-slate-300">
+                    {(currentQuestion.explanationLong || "")
+                      .split(/\n{2,}/)
+                      .map((para) => para.trim())
+                      .filter(Boolean)
+                      .map((para, i) => (
+                        <p key={i} className="whitespace-pre-line">
+                          {renderRich(para)}
                         </p>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-700">
-                            {rq.subjectName || "Subject"}
-                          </span>
-                          <span className="rounded-full bg-purple-50 px-2.5 py-0.5 text-xs font-bold text-purple-700">
-                            {rq.topicName || "Topic"}
-                          </span>
-                          <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-bold capitalize text-gray-600">
-                            {rq.difficulty}
-                          </span>
-                        </div>
-                      </button>
-                    ))}
+                      ))}
                   </div>
                 </div>
               )}
             </div>
 
             {/* Footer actions */}
-            {explanationTab === "explanation" && (hasLongExplanation || (showLong && relatedQuestions.length > 0)) && (
+            {(hasLongExplanation || (showLong && relatedQuestions.length > 0)) && (
               <div className="flex flex-wrap gap-2 border-t border-gray-200 p-4 dark:border-slate-700">
                 {hasLongExplanation && !showLong && (
                   <button
@@ -778,10 +797,14 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
                     Explain more ↓
                   </button>
                 )}
-                {/* Related questions only surface after the long explanation is opened. */}
+                {/* Related questions only surface after the long explanation is
+                    opened. Clicking starts a short practice session of them in
+                    the normal question window. */}
                 {showLong && relatedQuestions.length > 0 && (
                   <button
-                    onClick={() => setExplanationTab("related")}
+                    onClick={() =>
+                      startRelatedSession(relatedQuestions.map((q) => q.id))
+                    }
                     className="rounded-2xl border border-gray-300 px-5 py-3 font-black text-gray-700 transition hover:bg-gray-50 active:scale-95 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700"
                   >
                     Related questions ({relatedQuestions.length})
