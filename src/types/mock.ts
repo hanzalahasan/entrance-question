@@ -1,0 +1,63 @@
+import type { DifficultyLevel } from "./question";
+
+// How the student picks the paper: a real past-year paper, or a freshly
+// assembled paper at a chosen difficulty.
+export type MockMode = "past_year" | "difficulty";
+
+export type MockSelection =
+  | { mode: "past_year"; year: string }
+  | { mode: "difficulty"; difficulty: DifficultyLevel };
+
+// Admin-defined distribution. Each subject has a total count and an optional
+// per-topic breakdown (topic counts should sum to <= the subject count; any
+// remainder is filled from the subject at large).
+export type MockTopicQuota = { topicId: number; count: number };
+export type MockSubjectQuota = {
+  subjectId: number;
+  count: number;
+  topics: MockTopicQuota[];
+};
+
+export type MockConfig = {
+  durationMinutes: number;
+  markCorrect: number;
+  markWrong: number; // negative, e.g. -0.25
+  subjects: MockSubjectQuota[];
+};
+
+// A running (or finished) attempt — persisted so it can be paused + resumed.
+export type MockAttempt = {
+  id: string;
+  selection: MockSelection;
+  questionIds: number[];
+  answers: Record<number, string>; // questionId -> chosen option key
+  remainingSeconds: number;
+  status: "in_progress" | "submitted";
+  startedAt: string;
+  durationMinutes: number;
+  markCorrect: number;
+  markWrong: number;
+};
+
+export type MockSubjectScore = {
+  subjectId: number;
+  subjectName: string;
+  total: number;
+  correct: number;
+  wrong: number;
+  unanswered: number;
+  marks: number;
+};
+
+export type MockResult = {
+  totalQuestions: number;
+  attempted: number;
+  correct: number;
+  wrong: number;
+  unanswered: number;
+  marks: number; // net marks after negative marking
+  maxMarks: number;
+  subjects: MockSubjectScore[];
+};
+
+export const DIFFICULTY_LEVELS: DifficultyLevel[] = ["easy", "medium", "hard"];

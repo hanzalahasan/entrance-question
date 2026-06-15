@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import type { QuestionFilters } from "@/types/filter";
 import { subjectsMaster, topicsMaster } from "@/lib/master-data";
 
@@ -301,9 +302,12 @@ export default function TopFilterBar({
               Mock Test
             </label>
 
-            <button className="flex min-h-12 w-full items-center justify-between rounded-2xl border border-gray-300 bg-white px-4 text-left font-bold text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-white">
-              Mock
-            </button>
+            <Link
+              href="/mock"
+              className="flex min-h-12 w-full items-center justify-between rounded-2xl border border-gray-300 bg-white px-4 text-left font-bold text-gray-900 transition hover:border-blue-400 hover:bg-blue-50 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:hover:bg-slate-700"
+            >
+              Start Mock Test →
+            </Link>
           </div>
 
           <div>

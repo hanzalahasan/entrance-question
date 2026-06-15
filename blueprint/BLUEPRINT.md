@@ -9,7 +9,7 @@
 > time a feature is added or changed in the app, this file is updated to match — automatically,
 > without being asked.
 >
-> **Last synced with codebase:** 2026-06-15 (related questions = floating window + font slider)
+> **Last synced with codebase:** 2026-06-16 (Mock Test module)
 
 ---
 
@@ -930,6 +930,22 @@ preview table (then AI-fill / import as above).
 ## 19. Changelog
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
+
+- **2026-06-16** — **Mock Test module (MECEE-BL / CEE format).** New student route `/mock`: rules
+  window → mode select (past-year dropdown **or** easy/medium/hard) → timed exam → scored result.
+  Exam runner has a 180-min countdown with **pause/resume (persists across reloads), reset, and
+  save & exit**, free navigation, a question palette, and **subject-section jump tabs**; no reveal/
+  explanation during the test. Marking +1 / −0.25 (negative). Difficulty papers are assembled to an
+  **admin-defined per-subject + per-topic distribution** (default official 50/50/40/40/20 = 200) from
+  mock-eligible published questions, topping up short subjects from the same subject (any
+  difficulty/source) so the paper keeps its size. New admin page `/admin/mock-settings` (sidebar
+  link) to set duration, marks, and the distribution. New code: `types/mock.ts`; services
+  `mock-config-service` (config, default builder — localStorage v1), `mock-service` (build + score +
+  sections), `mock-attempt-store` (active-attempt persistence for pause/resume); components under
+  `components/mock/` (rules, setup, exam, palette, result) + `components/admin/mock-settings-form`.
+  The top filter bar's "Mock" button now links to `/mock`. **Note:** admin mock config is stored
+  per-browser (localStorage) for now — to share it across devices we'll add a Supabase
+  `app_settings` table later.
 
 - **2026-06-15** — **Structural refactor of the question card (no behavior change).** Split the
   monolithic `question-card.tsx` (was 832 lines) into focused components to keep every file well
