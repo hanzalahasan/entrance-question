@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Maximize2, Minimize2 } from "lucide-react";
 import type { Question } from "@/types/question";
 import QuestionOption from "./question-option";
 import RelatedQuestionWindow from "./related-question-window";
+import ExplanationWindow from "./explanation-window";
 import {
   getRandomQuestionId,
   saveSeenQuestionId,
@@ -18,19 +18,6 @@ type QuestionCardProps = {
   pool?: Question[];
 };
 
-// Render text with **important** parts bolded (lightweight markdown).
-function renderRich(text: string) {
-  return text.split(/(\*\*.+?\*\*)/g).map((part, i) =>
-    part.startsWith("**") && part.endsWith("**") ? (
-      <strong key={i} className="font-bold text-gray-900 dark:text-white">
-        {part.slice(2, -2)}
-      </strong>
-    ) : (
-      <span key={i}>{part}</span>
-    )
-  );
-}
-
 export default function QuestionCard({ questions, pool }: QuestionCardProps) {
   const [currentQuestionId, setCurrentQuestionId] = useState<number | null>(null);
   const [previousQuestionId, setPreviousQuestionId] = useState<number | null>(null);
@@ -38,32 +25,6 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);
-  // Inside the explanation modal: whether the long explanation is expanded, and
-  // which panel is shown (the explanation vs the related-questions list).
-  const [showLong, setShowLong] = useState(false);
-  // Free-floating explanation window: position + size (px). Null until opened.
-  const [winPos, setWinPos] = useState<{ x: number; y: number } | null>(null);
-  const [winSize, setWinSize] = useState<{ w: number; h: number } | null>(null);
-  const [expanded, setExpanded] = useState(false);
-  const dragRef = useRef<
-    | {
-        mode: "move" | "resize";
-        dir?: string; // for resize: any combo of n/s/e/w
-        startX: number;
-        startY: number;
-        origX: number;
-        origY: number;
-        origW: number;
-        origH: number;
-      }
-    | null
-  >(null);
-  const winRef = useRef<HTMLDivElement>(null);
-  const winSizeRef = useRef<{ w: number; h: number } | null>(null);
-  const winPosRef = useRef<{ x: number; y: number } | null>(null);
-  // Remembered window size + position (persisted) — reused on every open.
-  const savedSizeRef = useRef<{ w: number; h: number } | null>(null);
-  const savedPosRef = useRef<{ x: number; y: number } | null>(null);
   // The related questions currently shown in the floating related-question
   // window (opened on top of the blurred main card). Null when closed.
   const [relatedSession, setRelatedSession] = useState<Question[] | null>(null);
@@ -71,9 +32,6 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
   // brings it back into focus (tracked here rather than via CSS :hover, which
   // is unreliable under the click-through overlays).
   const [originHovered, setOriginHovered] = useState(false);
-  // Same blur-unless-hovered treatment for the explanation window while the
-  // related window is open.
-  const [explHovered, setExplHovered] = useState(false);
   // Reader font size for the explanation text (px), adjustable via a slider.
   // Seeded from the persisted value (the explanation isn't in the initial DOM,
   // so reading localStorage here can't cause a hydration mismatch).
@@ -129,103 +87,12 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  // Load the remembered window size + position once.
-  useEffect(() => {
-    try {
-      const rawSize = localStorage.getItem("eq_expl_size");
-      if (rawSize) {
-        const s = JSON.parse(rawSize);
-        if (s && typeof s.w === "number" && typeof s.h === "number") savedSizeRef.current = s;
-      }
-      const rawPos = localStorage.getItem("eq_expl_pos");
-      if (rawPos) {
-        const p = JSON.parse(rawPos);
-        if (p && typeof p.x === "number" && typeof p.y === "number") savedPosRef.current = p;
-      }
-    } catch {}
-  }, []);
-
   function changeFontSize(size: number) {
     setExplFontSize(size);
     try {
       localStorage.setItem("eq_expl_font", String(size));
     } catch {}
   }
-
-  // Drag-to-move (header) and drag-to-resize (any edge/corner).
-  useEffect(() => {
-    function onMove(e: PointerEvent) {
-      const d = dragRef.current;
-      if (!d) return;
-      const dx = e.clientX - d.startX;
-      const dy = e.clientY - d.startY;
-
-      if (d.mode === "move") {
-        const maxX = window.innerWidth - 60;
-        const maxY = window.innerHeight - 60;
-        const pos = {
-          x: Math.min(Math.max(8 - d.origW + 80, d.origX + dx), maxX),
-          y: Math.min(Math.max(0, d.origY + dy), maxY),
-        };
-        winPosRef.current = pos;
-        setWinPos(pos);
-        return;
-      }
-
-      // Resize from whichever edges/corner the grip represents.
-      const dir = d.dir || "se";
-      const MINW = 320,
-        MINH = 200;
-      const maxW = window.innerWidth - 16;
-      const maxH = window.innerHeight - 16;
-      let w = d.origW,
-        h = d.origH,
-        x = d.origX,
-        y = d.origY;
-      if (dir.includes("e")) w = Math.min(maxW, Math.max(MINW, d.origW + dx));
-      if (dir.includes("w")) {
-        w = Math.min(maxW, Math.max(MINW, d.origW - dx));
-        x = d.origX + (d.origW - w);
-      }
-      if (dir.includes("s")) h = Math.min(maxH, Math.max(MINH, d.origH + dy));
-      if (dir.includes("n")) {
-        h = Math.min(maxH, Math.max(MINH, d.origH - dy));
-        y = d.origY + (d.origH - h);
-      }
-      const size = { w, h };
-      winSizeRef.current = size;
-      setWinSize(size);
-      winPosRef.current = { x, y };
-      setWinPos({ x, y });
-    }
-
-    function onUp() {
-      const d = dragRef.current;
-      // Remember the position after any drag (move or resize).
-      if (d && winPosRef.current) {
-        savedPosRef.current = winPosRef.current;
-        try {
-          localStorage.setItem("eq_expl_pos", JSON.stringify(winPosRef.current));
-        } catch {}
-      }
-      if (d?.mode === "resize" && winSizeRef.current) {
-        // Remember the user's chosen size for next time.
-        savedSizeRef.current = winSizeRef.current;
-        try {
-          localStorage.setItem("eq_expl_size", JSON.stringify(winSizeRef.current));
-        } catch {}
-        setExpanded(false);
-      }
-      dragRef.current = null;
-    }
-
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    return () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-    };
-  }, []);
 
   // Resolve the current question from the full pool (so we can show a related
   // question that sits outside the active filter), falling back to the filter.
@@ -238,115 +105,14 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
     setSelectedAnswer(null);
     setShowAnswer(false);
     setShowExplanation(false);
-    setShowLong(false);
-    setExpanded(false);
     setExplanationSeen(false);
     setHighlightedIndex(0);
   }
 
-  // Keep a window of size w×h within the viewport.
-  function clampPos(x: number, y: number, w: number, h: number) {
-    const maxX = Math.max(8, window.innerWidth - w - 8);
-    const maxY = Math.max(8, window.innerHeight - h - 8);
-    return { x: Math.min(Math.max(8, x), maxX), y: Math.min(Math.max(8, y), maxY) };
-  }
-  function defaultLongSize() {
-    return {
-      w: Math.min(640, window.innerWidth - 24),
-      h: Math.min(Math.round(window.innerHeight * 0.55), window.innerHeight - 24),
-    };
-  }
-
-  // Open the modal showing just the SHORT explanation: a small, movable
-  // (but not resizable) window. Opens at the remembered position, else lower
-  // on screen so the question stays visible.
+  // Open the explanation window (it manages its own position/size/long view).
   function openExplanation() {
-    setShowExplanation(true);
-    setShowLong(false);
-    setExpanded(false);
     setExplanationSeen(true);
-    const w = Math.min(480, window.innerWidth - 24);
-    setWinSize({ w, h: Math.round(window.innerHeight * 0.4) });
-    const base =
-      savedPosRef.current ?? {
-        x: Math.round((window.innerWidth - w) / 2),
-        y: Math.round(window.innerHeight * 0.32), // lower → keeps the question visible
-      };
-    const pos = {
-      x: Math.min(Math.max(8, base.x), Math.max(8, window.innerWidth - w - 8)),
-      y: Math.min(Math.max(8, base.y), window.innerHeight - 80),
-    };
-    setWinPos(pos);
-    winPosRef.current = pos;
-  }
-
-  // Reveal the LONG explanation → switch to the resizable window at the
-  // remembered size, opening from the window's CURRENT position (clamped).
-  function openLong() {
-    const size = savedSizeRef.current ?? defaultLongSize();
-    const base = winPos ?? savedPosRef.current ?? { x: 0, y: 0 };
-    const pos = clampPos(base.x, base.y, size.w, size.h);
-    setWinSize(size);
-    winSizeRef.current = size;
-    setWinPos(pos);
-    winPosRef.current = pos;
-    setExpanded(false);
-    setShowLong(true);
-  }
-
-  // Header drag → move the window (works in both modes).
-  function startMove(event: React.PointerEvent) {
-    if (!winPos) return;
-    const rect = winRef.current?.getBoundingClientRect();
-    dragRef.current = {
-      mode: "move",
-      startX: event.clientX,
-      startY: event.clientY,
-      origX: winPos.x,
-      origY: winPos.y,
-      origW: rect?.width ?? winSize?.w ?? 480,
-      origH: rect?.height ?? winSize?.h ?? 300,
-    };
-  }
-
-  // Edge / corner grip drag → resize (long mode only).
-  function startResize(event: React.PointerEvent, dir: string) {
-    if (!winPos || !winSize) return;
-    event.stopPropagation();
-    event.preventDefault();
-    dragRef.current = {
-      mode: "resize",
-      dir,
-      startX: event.clientX,
-      startY: event.clientY,
-      origX: winPos.x,
-      origY: winPos.y,
-      origW: winSize.w,
-      origH: winSize.h,
-    };
-  }
-
-  // Expand / shrink preset (long mode). Keeps the window roughly where it is.
-  function toggleWindowSize() {
-    const cur = winPos ?? { x: 12, y: 12 };
-    if (!expanded) {
-      const w = Math.min(1100, window.innerWidth - 24);
-      const h = Math.min(Math.round(window.innerHeight * 0.9), window.innerHeight - 24);
-      setWinSize({ w, h });
-      winSizeRef.current = { w, h };
-      const pos = clampPos(cur.x, cur.y, w, h);
-      setWinPos(pos);
-      winPosRef.current = pos;
-      setExpanded(true);
-    } else {
-      const size = savedSizeRef.current ?? defaultLongSize();
-      setWinSize(size);
-      winSizeRef.current = size;
-      const pos = clampPos(cur.x, cur.y, size.w, size.h);
-      setWinPos(pos);
-      winPosRef.current = pos;
-      setExpanded(false);
-    }
+    setShowExplanation(true);
   }
 
   // Open the floating related-questions window on top of the (now-blurred) main
@@ -354,7 +120,6 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
   function startRelatedSession(related: Question[]) {
     if (related.length === 0) return;
     setOriginHovered(false);
-    setExplHovered(false);
     setRelatedSession(related);
   }
 
@@ -380,7 +145,6 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
   const topicLabel =
     currentQuestion.topicName || `Topic ${currentQuestion.topicId}`;
 
-  const hasLongExplanation = Boolean(currentQuestion.explanationLong?.trim());
   const relatedQuestions = getRelatedQuestions(
     currentQuestion,
     pool && pool.length > 0 ? pool : questions,
@@ -649,176 +413,16 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
         </div>
       </div>
 
-      {showExplanation && winPos && winSize && (
-        <div
-          className={`fixed inset-0 z-50 ${
-            relatedSession ? "pointer-events-none" : "bg-black/50"
-          }`}
-        >
-          {/* Movable always. Short = small, auto-height. Long = sized + resizable. */}
-          <div
-            ref={winRef}
-            onMouseEnter={() => setExplHovered(true)}
-            onMouseLeave={() => setExplHovered(false)}
-            style={{
-              left: winPos.x,
-              top: winPos.y,
-              width: winSize.w,
-              ...(showLong ? { height: winSize.h } : {}),
-              ...(relatedSession && !explHovered ? { filter: "blur(2.5px)" } : {}),
-            }}
-            className={`pointer-events-auto absolute flex flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-slate-800 ${
-              showLong ? "" : "max-h-[60vh]"
-            }`}
-          >
-            {/* Resize handles — every edge + corner (long explanation only) */}
-            {showLong &&
-              (
-                [
-                  ["n", "left-0 right-0 top-0 h-1.5 cursor-ns-resize"],
-                  ["s", "left-0 right-0 bottom-0 h-1.5 cursor-ns-resize"],
-                  ["e", "top-0 bottom-0 right-0 w-1.5 cursor-ew-resize"],
-                  ["w", "top-0 bottom-0 left-0 w-1.5 cursor-ew-resize"],
-                  ["nw", "top-0 left-0 h-3.5 w-3.5 cursor-nwse-resize"],
-                  ["ne", "top-0 right-0 h-3.5 w-3.5 cursor-nesw-resize"],
-                  ["sw", "bottom-0 left-0 h-3.5 w-3.5 cursor-nesw-resize"],
-                  ["se", "bottom-0 right-0 h-3.5 w-3.5 cursor-nwse-resize"],
-                ] as const
-              ).map(([dir, cls]) => (
-                <div
-                  key={dir}
-                  onPointerDown={(e) => startResize(e, dir)}
-                  className={`absolute z-30 ${cls}`}
-                />
-              ))}
-
-            {/* Header — drag handle */}
-            <div
-              onPointerDown={startMove}
-              className="flex cursor-move select-none items-center justify-between border-b border-gray-200 p-5 dark:border-slate-700"
-            >
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                Explanation
-              </h3>
-
-              <div className="flex items-center gap-2">
-                {/* Font-size slider for the explanation text */}
-                <div
-                  onPointerDown={(e) => e.stopPropagation()}
-                  className="flex items-center gap-1.5 rounded-full border border-gray-300 px-2.5 py-1 dark:border-slate-600"
-                  title="Text size"
-                >
-                  <span className="text-xs font-bold text-gray-500 dark:text-slate-400">
-                    A
-                  </span>
-                  <input
-                    type="range"
-                    min={12}
-                    max={28}
-                    step={1}
-                    value={explFontSize}
-                    onChange={(e) => changeFontSize(Number(e.target.value))}
-                    className="h-1 w-20 cursor-pointer accent-blue-600"
-                    aria-label="Explanation text size"
-                  />
-                  <span className="text-base font-bold text-gray-500 dark:text-slate-400">
-                    A
-                  </span>
-                </div>
-
-                {/* Expand / shrink — only for the long explanation, on the RIGHT */}
-                {showLong && (
-                  <button
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={toggleWindowSize}
-                    title={expanded ? "Shrink window" : "Expand window"}
-                    aria-label={expanded ? "Shrink window" : "Expand window"}
-                    className="grid h-9 w-9 cursor-pointer place-items-center rounded-full border border-gray-300 text-gray-700 transition hover:bg-gray-50 active:scale-95 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700"
-                  >
-                    {expanded ? (
-                      <Minimize2 className="h-4 w-4" />
-                    ) : (
-                      <Maximize2 className="h-4 w-4" />
-                    )}
-                  </button>
-                )}
-
-                <button
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={() => setShowExplanation(false)}
-                  className="cursor-pointer rounded-full bg-red-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-700 active:scale-95"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-
-            {/* Scrollable body */}
-            <div className="flex-1 overflow-y-auto p-6">
-              {currentQuestion.media?.explanationImageUrl && (
-                <img
-                  src={currentQuestion.media.explanationImageUrl}
-                  alt="Explanation diagram"
-                  className="mb-4 max-h-80 rounded-2xl border border-gray-200 object-contain"
-                />
-              )}
-
-              <p
-                style={{ fontSize: explFontSize }}
-                className="leading-relaxed text-gray-700 dark:text-slate-300"
-              >
-                {renderRich(currentQuestion.explanation)}
-              </p>
-
-              {showLong && hasLongExplanation && (
-                <div className="mt-5 border-t border-gray-200 pt-5 dark:border-slate-700">
-                  <h4 className="mb-3 text-sm font-black uppercase tracking-wide text-gray-500">
-                    In depth
-                  </h4>
-                  <div
-                    style={{ fontSize: explFontSize }}
-                    className="space-y-3 leading-relaxed text-gray-700 dark:text-slate-300"
-                  >
-                    {(currentQuestion.explanationLong || "")
-                      .split(/\n{2,}/)
-                      .map((para) => para.trim())
-                      .filter(Boolean)
-                      .map((para, i) => (
-                        <p key={i} className="whitespace-pre-line">
-                          {renderRich(para)}
-                        </p>
-                      ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Footer actions */}
-            {(hasLongExplanation || (showLong && relatedQuestions.length > 0)) && (
-              <div className="flex flex-wrap gap-2 border-t border-gray-200 p-4 dark:border-slate-700">
-                {hasLongExplanation && !showLong && (
-                  <button
-                    onClick={openLong}
-                    className="rounded-2xl bg-blue-600 px-5 py-3 font-black text-white transition hover:bg-blue-700 active:scale-95"
-                  >
-                    Explain more ↓
-                  </button>
-                )}
-                {/* Related questions only surface after the long explanation is
-                    opened. Clicking opens them in a floating window on top of
-                    the (blurred) main card; the explanation stays open. */}
-                {showLong && relatedQuestions.length > 0 && (
-                  <button
-                    onClick={() => startRelatedSession(relatedQuestions)}
-                    className="rounded-2xl border border-gray-300 px-5 py-3 font-black text-gray-700 transition hover:bg-gray-50 active:scale-95 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700"
-                  >
-                    Related questions ({relatedQuestions.length})
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
+      {showExplanation && (
+        <ExplanationWindow
+          question={currentQuestion}
+          fontSize={explFontSize}
+          onFontSizeChange={changeFontSize}
+          relatedQuestions={relatedQuestions}
+          onStartRelated={startRelatedSession}
+          dimmed={Boolean(relatedSession)}
+          onClose={() => setShowExplanation(false)}
+        />
       )}
 
       {relatedSession && (

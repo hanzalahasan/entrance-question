@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import type { Question } from "@/types/question";
 import QuestionOption from "./question-option";
+import { renderRich } from "./rich-text";
 
 const WIDTH = 560;
 
@@ -49,19 +50,6 @@ type RelatedQuestionWindowProps = {
   // Close related-question mode (the "X" button / Escape).
   onClose: () => void;
 };
-
-// Render text with **important** parts bolded (lightweight markdown).
-function renderRich(text: string) {
-  return text.split(/(\*\*.+?\*\*)/g).map((part, i) =>
-    part.startsWith("**") && part.endsWith("**") ? (
-      <strong key={i} className="font-bold text-gray-900 dark:text-white">
-        {part.slice(2, -2)}
-      </strong>
-    ) : (
-      <span key={i}>{part}</span>
-    )
-  );
-}
 
 /**
  * A floating, movable practice window for related questions. It sits ON TOP of

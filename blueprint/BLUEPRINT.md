@@ -931,6 +931,16 @@ preview table (then AI-fill / import as above).
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-15** — **Structural refactor of the question card (no behavior change).** Split the
+  monolithic `question-card.tsx` (was 832 lines) into focused components to keep every file well
+  under 1000 lines: extracted the floating **explanation window** (drag/resize/position/font/long
+  view) into `explanation-window.tsx`, and a shared `rich-text.tsx` (`renderRich`) now used by both
+  the explanation + related windows. Result: `question-card.tsx` 436, `explanation-window.tsx` 419,
+  `related-question-window.tsx` 392, `rich-text.tsx` 15. `question-card` now just owns the main card +
+  answer flow and renders `<ExplanationWindow>` / `<RelatedQuestionWindow>`; the explanation window
+  self-manages its position/size (persisted in `eq_expl_pos`/`eq_expl_size`) and font lives in the
+  card and is passed down.
+
 - **2026-06-15** — **Related-question window refinements.** (1) Removed "Explain more" inside the
   related window — it now shows only the short explanation. (2) The window **remembers its position**
   (persisted to `eq_related_pos`) and reopens exactly where the user last placed it. (3) The
