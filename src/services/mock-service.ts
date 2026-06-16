@@ -87,14 +87,10 @@ export function buildMockQuestions(
       picked.push(...takeFrom(subjectPrimary, remaining, chosen));
     }
 
-    // 3) Top-up: still short → same subject, any difficulty/source.
-    const stillShort = quota.count - picked.length;
-    if (stillShort > 0) {
-      const fallback = shuffle(
-        eligible.filter((q) => q.subjectId === quota.subjectId)
-      );
-      picked.push(...takeFrom(fallback, stillShort, chosen));
-    }
+    // NOTE: difficulty papers are kept PURE — we deliberately do NOT top up with
+    // other difficulties. A "medium" practice paper contains only medium
+    // questions (it may be shorter than the quota if the bank is thin) so the
+    // "Practice · medium" label is always truthful.
 
     result.push(...picked);
   }

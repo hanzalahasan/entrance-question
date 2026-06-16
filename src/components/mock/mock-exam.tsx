@@ -41,12 +41,35 @@ export default function MockExam({
   );
   const [remaining, setRemaining] = useState(attempt.remainingSeconds);
   const [paused, setPaused] = useState(startPaused);
+  // Grace period: when a student lands fresh, the countdown only begins after a
+  // 10-second prep window. Resumed (paused) attempts skip it.
+  const [prepSeconds, setPrepSeconds] = useState(startPaused ? 0 : 10);
 
   const sections = mockSections(questions);
   const current = questions[index];
   const answeredCount = Object.values(answers).filter(
     (v) => v != null && v !== ""
   ).length;
+
+  // The paper's framing: a past-year paper shows its year; a difficulty paper
+  // shows "Practice" + the level. Driven by how the student set up the attempt.
+  const selection = attempt.selection;
+  const modeBadge =
+    selection.mode === "past_year"
+      ? {
+          text: `Past Year · ${selection.year}`,
+          cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
+        }
+      : {
+          text: `Practice · ${selection.difficulty}`,
+          cls: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
+        };
+
+  const DIFF_BADGE: Record<string, string> = {
+    easy: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+    medium: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+    hard: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+  };
 
   // Assemble the persistable attempt from current state.
   function snapshot(
@@ -86,9 +109,50 @@ export default function MockExam({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Countdown — runs only while not paused; auto-submits at zero.
+  // Grace countdown before the main timer starts (ticks only while running).
   useEffect(() => {
-    if (paused) return;
+    if (paused || prepSeconds <= 0) return;
+    const id = setTimeout(() => setPrepSeconds((s) => Math.max(0, s - 1)), 1000);
+    return () => clearTimeout(id);
+  }, [paused, prepSeconds]);
+
+  // Keyboard navigation: ←/→ (and Enter) move between questions; ↑/↓ move the
+  // selected option. Ignored while paused, during the grace window, or when
+  // typing in a field.
+  useEffect(() => {
+    if (paused || prepSeconds > 0) return;
+    function onKey(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      switch (e.key) {
+        case "ArrowRight":
+        case "Enter":
+          e.preventDefault();
+          go(1);
+          break;
+        case "ArrowLeft":
+          e.preventDefault();
+          go(-1);
+          break;
+        case "ArrowDown":
+          e.preventDefault();
+          moveOption(1);
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          moveOption(-1);
+          break;
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paused, prepSeconds, index, current, answers]);
+
+  // Countdown — runs only while not paused and after the grace window;
+  // auto-submits at zero.
+  useEffect(() => {
+    if (paused || prepSeconds > 0) return;
     if (remaining <= 0) {
       handleSubmit();
       return;
@@ -107,7 +171,7 @@ export default function MockExam({
     }, 1000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paused, remaining <= 0]);
+  }, [paused, prepSeconds, remaining <= 0]);
 
   function selectOption(key: string) {
     setAnswers((prev) => {
@@ -123,6 +187,21 @@ export default function MockExam({
 
   function go(delta: number) {
     setIndex((i) => Math.min(questions.length - 1, Math.max(0, i + delta)));
+  }
+
+  // Move the selected option with ↑/↓ (wraps; picks the first/last if none yet).
+  function moveOption(delta: number) {
+    const keys = current.options.map((o) => o.key);
+    if (keys.length === 0) return;
+    const cur = answers[current.id];
+    const curIdx = keys.indexOf(cur);
+    const nextIdx =
+      curIdx === -1
+        ? delta > 0
+          ? 0
+          : keys.length - 1
+        : (curIdx + delta + keys.length) % keys.length;
+    setAnswers((prev) => ({ ...prev, [current.id]: keys[nextIdx] }));
   }
 
   function handleSubmit() {
@@ -165,15 +244,27 @@ export default function MockExam({
           </p>
         </div>
 
-        <div
-          className={`rounded-2xl px-5 py-2 text-center font-black tabular-nums ${
-            remaining <= 300
-              ? "bg-red-100 text-red-700"
-              : "bg-blue-50 text-blue-700 dark:bg-slate-700 dark:text-white"
-          }`}
-        >
-          <span className="text-xl">{formatClock(remaining)}</span>
-          {paused && <span className="ml-2 text-xs">PAUSED</span>}
+        <div className="flex flex-col items-center gap-1">
+          <span
+            className={`rounded-full px-3 py-0.5 text-xs font-black ${modeBadge.cls}`}
+          >
+            {modeBadge.text}
+          </span>
+          <div
+            className={`rounded-2xl px-5 py-2 text-center font-black tabular-nums ${
+              remaining <= 300
+                ? "bg-red-100 text-red-700"
+                : "bg-blue-50 text-blue-700 dark:bg-slate-700 dark:text-white"
+            }`}
+          >
+            <span className="text-xl">{formatClock(remaining)}</span>
+            {paused && <span className="ml-2 text-xs">PAUSED</span>}
+          </div>
+          {!paused && prepSeconds > 0 && (
+            <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
+              Starts in {prepSeconds}s
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -231,6 +322,18 @@ export default function MockExam({
               <span className="rounded-full bg-purple-50 px-3 py-1 text-xs font-bold text-purple-700">
                 {current.topicName || "Topic"}
               </span>
+              {current.difficulty && (
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-bold capitalize ${DIFF_BADGE[current.difficulty] ?? DIFF_BADGE.medium}`}
+                >
+                  {current.difficulty}
+                </span>
+              )}
+              {selection.mode === "past_year" && current.year && (
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+                  {current.year}
+                </span>
+              )}
               <span className="ml-auto text-sm font-black text-gray-400">
                 Q {index + 1} / {questions.length}
               </span>
@@ -260,7 +363,7 @@ export default function MockExam({
                   type={option.type}
                   status="default"
                   disabled={false}
-                  highlighted={answers[current.id] === option.key}
+                  selected={answers[current.id] === option.key}
                   onClick={() => selectOption(option.key)}
                 />
               ))}
@@ -290,6 +393,10 @@ export default function MockExam({
                 Next →
               </button>
             </div>
+
+            <p className="mt-4 text-center text-xs font-semibold text-gray-400 dark:text-slate-500">
+              Keyboard: ← / → or Enter to move questions · ↑ / ↓ to choose an option
+            </p>
           </div>
 
           {/* Palette */}

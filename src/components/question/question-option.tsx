@@ -8,6 +8,9 @@ type QuestionOptionProps = {
   status: "default" | "correct" | "wrong";
   disabled: boolean;
   highlighted?: boolean;
+  // The student's chosen answer (distinct from `highlighted`, the keyboard/hover
+  // navigation focus). Selected options get the green "ticked" treatment.
+  selected?: boolean;
   onClick: () => void;
   onMouseEnter?: () => void;
 };
@@ -20,19 +23,32 @@ export default function QuestionOption({
   status,
   disabled,
   highlighted = false,
+  selected = false,
   onClick,
   onMouseEnter,
 }: QuestionOptionProps) {
-  // One unified highlight state, shared by mouse hover and keyboard arrows.
-  // No separate `hover:` background, so only ever one option looks active.
+  // A selected (but not yet graded) answer gets a green check so the student
+  // clearly sees their pick — same green as a correct answer. `highlighted` is
+  // the navigation focus (keyboard/hover) and stays blue.
+  const isSelected = selected && status === "default";
+
   const stateClass =
     status === "correct"
       ? "border-green-500 bg-green-50 text-green-700"
       : status === "wrong"
         ? "border-red-500 bg-red-50 text-red-700"
-        : highlighted
-          ? "border-blue-500 bg-blue-50 text-gray-900 ring-2 ring-blue-500/40 dark:border-blue-400 dark:bg-slate-700 dark:text-white"
-          : "border-gray-200 bg-white text-gray-800 dark:border-slate-600 dark:bg-slate-900 dark:text-white";
+        : isSelected
+          ? "border-green-500 bg-green-50 text-gray-900 ring-2 ring-green-500/40 dark:border-green-400 dark:bg-green-900/20 dark:text-white"
+          : highlighted
+            ? "border-blue-500 bg-blue-50 text-gray-900 ring-2 ring-blue-500/40 dark:border-blue-400 dark:bg-slate-700 dark:text-white"
+            : "border-gray-200 bg-white text-gray-800 dark:border-slate-600 dark:bg-slate-900 dark:text-white";
+
+  const tick =
+    status === "correct" || isSelected
+      ? { symbol: "✓", cls: "bg-green-500 text-white" }
+      : status === "wrong"
+        ? { symbol: "✕", cls: "bg-red-500 text-white" }
+        : null;
 
   return (
     <button
@@ -41,8 +57,16 @@ export default function QuestionOption({
       disabled={disabled}
       className={`w-full rounded-2xl border p-4 text-left font-semibold transition disabled:cursor-not-allowed ${stateClass}`}
     >
-      <div className="flex gap-3">
-        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gray-100 text-sm font-black text-gray-700">
+      <div className="flex items-center gap-3">
+        <span
+          className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-sm font-black ${
+            isSelected || status === "correct"
+              ? "bg-green-500 text-white"
+              : status === "wrong"
+                ? "bg-red-500 text-white"
+                : "bg-gray-100 text-gray-700"
+          }`}
+        >
           {optionKey}
         </span>
 
@@ -59,6 +83,14 @@ export default function QuestionOption({
             />
           )}
         </div>
+
+        {tick && (
+          <span
+            className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-sm font-black ${tick.cls}`}
+          >
+            {tick.symbol}
+          </span>
+        )}
       </div>
     </button>
   );

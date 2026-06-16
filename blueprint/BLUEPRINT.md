@@ -1040,6 +1040,19 @@ sidebar nav entry. Reuses `rag-service` retrieval and the existing
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-16** — **Mock exam UX: grace timer, keyboard nav, badges, green tick,
+  pure difficulty papers.** The countdown now starts after a **10-second grace
+  window** on landing ("Starts in Ns"; resumed attempts skip it). **Keyboard
+  navigation**: ←/→ or Enter move between questions, ↑/↓ change the selected
+  option. The header center shows a **mode badge** — `Past Year · <year>` or
+  `Practice · <level>` — and each question shows its **difficulty** badge (plus
+  the year in past-year mode). Selecting an option now shows a **green check** (new
+  `selected` prop on `QuestionOption`, distinct from the blue keyboard/hover
+  `highlighted`; correct/wrong also get ✓/✕). **Difficulty papers are now pure**:
+  `mock-service` no longer tops up a short subject with other difficulties, so a
+  "Practice · medium" paper contains only medium questions (may be shorter than
+  the quota when the bank is thin) and the label is always truthful.
+
 - **2026-06-16** — **Master Settings redesign + multi-subject/topic generation.**
   **Master Settings** (`/admin/settings`) is now one unified **accordion**: add
   subjects at the top, and each subject expands to show, add, and toggle its own
