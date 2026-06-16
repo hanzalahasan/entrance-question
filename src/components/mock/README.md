@@ -16,9 +16,10 @@ src/components/mock/                         Student UI (this folder)
   mock-setup.tsx      Mode select: past-year dropdown OR easy/medium/hard
   mock-exam.tsx       The runner: countdown, pause/resume/reset, navigation, palette, submit
   mock-palette.tsx    Question-number grid + section tabs (live: answered; review: correct/wrong/grey)
-  mock-result.tsx     Score breakdown + timing meta + "Detailed report" button
+  mock-result.tsx     Net score + segmented progress bar + per-subject bars + "Detailed report"
   mock-meta.tsx       Reusable header: mode (year/difficulty), date, start/end, time taken, pauses
-  mock-detailed-report.tsx  Modal: per-subject → per-topic breakdown + "Check your answers"
+  mock-score-bar.tsx  Segmented green/red/grey bar (correct/wrong/unanswered) + optional legend
+  mock-detailed-report.tsx  Modal: overall + per-subject + per-topic bars & breakdown + "Check your answers"
   mock-review.tsx     Read-only graded walkthrough (correct/wrong options + explanation window)
 src/components/admin/mock-settings-form.tsx Admin config form (duration, marks, per-subject+topic)
 

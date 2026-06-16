@@ -1040,6 +1040,15 @@ sidebar nav entry. Reuses `rag-service` retrieval and the existing
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-16** — **Mock result/report: segmented progress bars + UI polish.** New
+  reusable `MockScoreBar` — a green/red/grey segmented bar (correct/wrong/
+  unanswered) with an optional count legend. The **result page** now shows it
+  right below the net score (and a per-subject bar each), replacing the plain
+  stat tiles/table for a cleaner look. The **detailed report** shows a bar for the
+  **overall** result, for **each subject**, and for **each topic** (mini bar +
+  inline ✓/✗/— counts), replacing the old tiles + dense table. Both pages
+  restyled (gradient net-score card, card-based subject/topic sections).
+
 - **2026-06-16** — **Detailed mock report + answer review.** New phase
   `result → review`. **Result page** now shows a timing/mode header (`MockMeta`):
   the date, start & finish clock times, **time taken**, whether it was done **in

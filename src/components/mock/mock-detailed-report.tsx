@@ -2,6 +2,7 @@
 
 import type { MockAttempt, MockResult } from "@/types/mock";
 import MockMeta from "./mock-meta";
+import MockScoreBar from "./mock-score-bar";
 
 type Props = {
   result: MockResult;
@@ -46,70 +47,79 @@ export default function MockDetailedReport({
         {/* Timing + mode */}
         <MockMeta attempt={attempt} />
 
-        {/* Overall */}
-        <div className="mt-5 grid grid-cols-4 gap-2 text-center">
-          <Tile label="Total" value={result.totalQuestions} tone="gray" />
-          <Tile label="Correct" value={result.correct} tone="green" />
-          <Tile label="Wrong" value={result.wrong} tone="red" />
-          <Tile label="Unanswered" value={result.unanswered} tone="gray" />
+        {/* Overall progress */}
+        <div className="mt-5 rounded-2xl border border-gray-200 p-5 dark:border-slate-600">
+          <div className="mb-3 flex items-baseline justify-between">
+            <p className="text-xs font-black uppercase tracking-wide text-gray-400 dark:text-slate-500">
+              Overall
+            </p>
+            <p className="text-sm font-black text-gray-900 dark:text-white">
+              {result.attempted}/{result.totalQuestions}{" "}
+              <span className="text-xs font-bold text-gray-400">attempted</span>
+            </p>
+          </div>
+          <MockScoreBar
+            correct={result.correct}
+            wrong={result.wrong}
+            unanswered={result.unanswered}
+            showLegend
+          />
         </div>
 
-        {/* Subject → topic breakdown */}
-        <div className="mt-6 space-y-5">
+        {/* Subject → topic breakdown, each with its own bar */}
+        <div className="mt-6 space-y-4">
           {result.subjects.map((s) => (
             <div
               key={s.subjectId}
-              className="overflow-hidden rounded-2xl border border-gray-200 dark:border-slate-600"
+              className="rounded-2xl border border-gray-200 p-5 dark:border-slate-600"
             >
-              <div className="flex flex-wrap items-center justify-between gap-2 bg-gray-50 px-4 py-3 dark:bg-slate-900/60">
-                <h3 className="font-black text-gray-900 dark:text-white">
+              {/* Subject header + subject-level bar */}
+              <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-base font-black text-gray-900 dark:text-white">
                   {s.subjectName}
                 </h3>
-                <div className="flex items-center gap-3 text-xs font-bold">
-                  <span className="text-green-600">{s.correct} correct</span>
-                  <span className="text-red-600">{s.wrong} wrong</span>
-                  <span className="text-gray-400">{s.unanswered} unanswered</span>
-                  <span className="text-gray-900 dark:text-white">
-                    {fmt(s.marks)} marks
-                  </span>
-                </div>
+                <span className="text-sm font-black text-gray-900 dark:text-white">
+                  {fmt(s.marks)}{" "}
+                  <span className="text-xs font-bold text-gray-400">marks</span>
+                </span>
               </div>
+              <MockScoreBar
+                correct={s.correct}
+                wrong={s.wrong}
+                unanswered={s.unanswered}
+                showLegend
+              />
 
-              <table className="w-full text-left text-sm">
-                <thead className="text-xs font-black uppercase text-gray-400 dark:text-slate-500">
-                  <tr className="border-b border-gray-100 dark:border-slate-700">
-                    <th className="px-4 py-2">Topic</th>
-                    <th className="px-2 py-2 text-center">✓</th>
-                    <th className="px-2 py-2 text-center">✗</th>
-                    <th className="px-2 py-2 text-center">—</th>
-                    <th className="px-4 py-2 text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {s.topics.map((t) => (
-                    <tr
-                      key={t.topicId}
-                      className="border-b border-gray-50 last:border-0 dark:border-slate-700/50"
-                    >
-                      <td className="px-4 py-2 font-bold text-gray-800 dark:text-slate-200">
+              {/* Per-topic rows, each with a mini bar */}
+              <div className="mt-4 space-y-3 border-t border-gray-100 pt-4 dark:border-slate-700">
+                {s.topics.map((t) => (
+                  <div key={t.topicId}>
+                    <div className="mb-1.5 flex items-center justify-between gap-3">
+                      <span className="text-sm font-bold text-gray-800 dark:text-slate-200">
                         {t.topicName}
-                      </td>
-                      <td className="px-2 py-2 text-center font-bold text-green-600">
-                        {t.correct}
-                      </td>
-                      <td className="px-2 py-2 text-center font-bold text-red-600">
-                        {t.wrong}
-                      </td>
-                      <td className="px-2 py-2 text-center text-gray-400">
-                        {t.unanswered}
-                      </td>
-                      <td className="px-4 py-2 text-right font-bold text-gray-900 dark:text-white">
-                        {t.total}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </span>
+                      <span className="flex shrink-0 items-center gap-2.5 text-xs font-bold">
+                        <span className="text-green-600 dark:text-green-400">
+                          {t.correct}✓
+                        </span>
+                        <span className="text-red-600 dark:text-red-400">
+                          {t.wrong}✗
+                        </span>
+                        <span className="text-gray-400">{t.unanswered}—</span>
+                        <span className="text-gray-500 dark:text-slate-400">
+                          /{t.total}
+                        </span>
+                      </span>
+                    </div>
+                    <MockScoreBar
+                      correct={t.correct}
+                      wrong={t.wrong}
+                      unanswered={t.unanswered}
+                      size="sm"
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
@@ -129,27 +139,6 @@ export default function MockDetailedReport({
           </button>
         </div>
       </div>
-    </div>
-  );
-}
-
-function Tile({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone: "green" | "red" | "gray";
-}) {
-  const toneClass =
-    tone === "green" ? "text-green-600" : tone === "red" ? "text-red-600" : "text-gray-500";
-  return (
-    <div className="rounded-2xl border border-gray-200 p-3 dark:border-slate-600">
-      <p className={`text-xl font-black ${toneClass}`}>{value}</p>
-      <p className="mt-0.5 text-xs font-bold text-gray-500 dark:text-slate-400">
-        {label}
-      </p>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import type { MockAttempt, MockResult } from "@/types/mock";
 import MockMeta from "./mock-meta";
+import MockScoreBar from "./mock-score-bar";
 import MockDetailedReport from "./mock-detailed-report";
 
 type MockResultViewProps = {
@@ -47,55 +48,62 @@ export default function MockResultView({
         <MockMeta attempt={attempt} />
       </div>
 
-      <div className="mb-6 rounded-2xl bg-blue-50 p-6 text-center dark:bg-slate-700">
-        <p className="text-sm font-black uppercase tracking-wide text-blue-700 dark:text-blue-300">
+      {/* Net score + the correct/wrong/unanswered progress bar below it */}
+      <div className="mb-6 rounded-2xl border border-blue-100 bg-gradient-to-b from-blue-50 to-white p-6 dark:border-slate-600 dark:from-slate-700/60 dark:to-slate-800">
+        <p className="text-center text-xs font-black uppercase tracking-widest text-blue-600 dark:text-blue-300">
           Net score
         </p>
-        <p className="mt-1 text-4xl font-black text-gray-900 dark:text-white">
-          {fmt(result.marks)}{" "}
-          <span className="text-2xl text-gray-400">/ {result.maxMarks}</span>
+        <p className="mt-1 text-center text-5xl font-black text-gray-900 dark:text-white">
+          {fmt(result.marks)}
+          <span className="text-2xl font-bold text-gray-400">
+            {" "}
+            / {result.maxMarks}
+          </span>
         </p>
-        <p className="mt-1 text-sm font-bold text-gray-500 dark:text-slate-400">
-          {pct}%
+        <p className="mt-1 text-center text-sm font-bold text-gray-500 dark:text-slate-400">
+          {pct}% · {result.attempted}/{result.totalQuestions} attempted
         </p>
+
+        <div className="mt-5">
+          <MockScoreBar
+            correct={result.correct}
+            wrong={result.wrong}
+            unanswered={result.unanswered}
+            showLegend
+          />
+        </div>
       </div>
 
-      <div className="mb-6 grid grid-cols-3 gap-3 text-center">
-        <Stat label="Correct" value={result.correct} tone="green" />
-        <Stat label="Wrong" value={result.wrong} tone="red" />
-        <Stat label="Unanswered" value={result.unanswered} tone="gray" />
-      </div>
-
-      <div className="mb-8 overflow-hidden rounded-2xl border border-gray-200 dark:border-slate-600">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 text-xs font-black uppercase text-gray-500 dark:bg-slate-900 dark:text-slate-400">
-            <tr>
-              <th className="px-4 py-2">Subject</th>
-              <th className="px-2 py-2 text-center">✓</th>
-              <th className="px-2 py-2 text-center">✗</th>
-              <th className="px-2 py-2 text-center">—</th>
-              <th className="px-4 py-2 text-right">Marks</th>
-            </tr>
-          </thead>
-          <tbody>
-            {result.subjects.map((s) => (
-              <tr
-                key={s.subjectId}
-                className="border-t border-gray-100 dark:border-slate-700"
-              >
-                <td className="px-4 py-2 font-bold text-gray-900 dark:text-white">
+      {/* Per-subject summary */}
+      <div className="mb-8">
+        <p className="mb-2 text-xs font-black uppercase tracking-wide text-gray-400 dark:text-slate-500">
+          By subject
+        </p>
+        <div className="space-y-2">
+          {result.subjects.map((s) => (
+            <div
+              key={s.subjectId}
+              className="rounded-2xl border border-gray-200 p-4 dark:border-slate-700"
+            >
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <span className="font-bold text-gray-900 dark:text-white">
                   {s.subjectName}
-                </td>
-                <td className="px-2 py-2 text-center text-green-600">{s.correct}</td>
-                <td className="px-2 py-2 text-center text-red-600">{s.wrong}</td>
-                <td className="px-2 py-2 text-center text-gray-400">{s.unanswered}</td>
-                <td className="px-4 py-2 text-right font-black text-gray-900 dark:text-white">
-                  {fmt(s.marks)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </span>
+                <span className="text-sm font-black text-gray-900 dark:text-white">
+                  {fmt(s.marks)}{" "}
+                  <span className="text-xs font-bold text-gray-400">marks</span>
+                </span>
+              </div>
+              <MockScoreBar
+                correct={s.correct}
+                wrong={s.wrong}
+                unanswered={s.unanswered}
+                size="sm"
+                showLegend
+              />
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -132,31 +140,6 @@ export default function MockResultView({
           onClose={() => setShowDetailed(false)}
         />
       )}
-    </div>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone: "green" | "red" | "gray";
-}) {
-  const toneClass =
-    tone === "green"
-      ? "text-green-600"
-      : tone === "red"
-        ? "text-red-600"
-        : "text-gray-500";
-  return (
-    <div className="rounded-2xl border border-gray-200 p-4 dark:border-slate-600">
-      <p className={`text-2xl font-black ${toneClass}`}>{value}</p>
-      <p className="mt-1 text-xs font-bold text-gray-500 dark:text-slate-400">
-        {label}
-      </p>
     </div>
   );
 }
