@@ -9,7 +9,7 @@
 > time a feature is added or changed in the app, this file is updated to match — automatically,
 > without being asked.
 >
-> **Last synced with codebase:** 2026-06-16 (Mock Test module)
+> **Last synced with codebase:** 2026-06-16 (Knowledge Base / Training Module — Phase 1)
 
 ---
 
@@ -32,7 +32,8 @@
 15. [Business rules & logic](#15-business-rules--logic)
 16. [UI/design conventions](#16-uidesign-conventions)
 17. [Build & deploy](#17-build--deploy)
-18. [Changelog](#18-changelog)
+18. [Knowledge Base (Training Module / RAG)](#18b-knowledge-base-training-module--rag--phase-1)
+19. [Changelog](#18-changelog)
 
 ---
 
@@ -927,9 +928,84 @@ preview table (then AI-fill / import as above).
 
 ---
 
+## 18b. Knowledge Base (Training Module / RAG) — Phase 1
+
+> Full forward design: [`TRAINING-MODULE-PLAN.md`](./TRAINING-MODULE-PLAN.md). This
+> section documents what's **shipped** (Phase 1). Phases 2–3 (book-grounded
+> question generation, student-facing citations + contradiction UI) remain planned.
+
+**Goal.** Let admins feed the system *book knowledge*, then **ground AI
+explanations** in it via Retrieval-Augmented Generation (RAG) — not fine-tuning,
+so facts stay updatable and citable.
+
+**Admin section — `/admin/knowledge-base`** (sidebar link "Knowledge Base").
+- **Add source** with four input types, all feeding one pipeline: 📄 PDF
+  (`pdf-parse`), ✍️ paste text, 🔗 URL (server fetch + HTML strip), 🖼️ image
+  (GPT-4o vision OCR). Tag each with subject (scopes retrieval), chapter,
+  citation label, and **trust tier** (3 Official/curriculum > 2 textbook > 1
+  web/notes — higher wins on conflict).
+- **Sources list** — status (`processing → ready/failed`), passage count, view
+  extracted passages, enable/disable for retrieval, delete (cascades chunks +
+  removes the stored file).
+- Requires Supabase (vectors can't live in localStorage); shows a setup notice
+  otherwise.
+
+**Ingestion pipeline** (`POST /api/admin/kb-ingest`, server-side): extract text →
+**chunk** (~800 tokens, char-approx with overlap, breaks on paragraph/sentence) →
+**embed** (`text-embedding-3-small`, 1536-dim, batched) → **store** in
+`kb_chunks`; original PDF/image kept in the private `knowledge-base` Storage
+bucket (best-effort). Source flips `processing → ready` with `chunk_count`, or
+`failed` with a reason.
+
+**Grounded explanations.** `POST /api/admin/generate-explanation` now runs a
+retrieval step first: it embeds the question, calls the `match_kb_chunks` RPC for
+the top-K enabled chunks (optionally subject-scoped), injects them as a trust-tier
+-ranked GROUNDING block ("prefer these facts; on conflict follow the higher tier,
+don't blend; paraphrase, no long verbatim quotes"), and returns `citations` +
+`grounded`. **Degrades gracefully**: if the KB isn't set up or nothing matches,
+behaviour is identical to before (ungrounded answer).
+
+**Data model (Supabase + pgvector).** `kb_sources` (title, type, subject, chapter,
+citation_label, trust_tier, status, chunk_count, enabled, …) and `kb_chunks`
+(source_id, content, `embedding vector(1536)`, chapter, page, metadata) with an
+ivfflat cosine index. RPC `match_kb_chunks(query_embedding, match_count,
+filter_subject_id)` returns similar enabled+ready chunks ordered by trust tier
+then distance. **One-time setup** (anon key can't DDL): run
+[`supabase/knowledge-base-setup.sql`](../supabase/knowledge-base-setup.sql) in the
+dashboard — enables pgvector, creates tables + index + RPC + the storage bucket +
+permissive RLS mirroring the app's anon-key model.
+
+**New code.** `types/knowledge-base.ts`; services `rag-service.ts` (server-only:
+chunk/embed/extract/retrieve) + `knowledge-base-service.ts` (client CRUD); route
+`api/admin/kb-ingest/` (+README); page `app/admin/knowledge-base/` (+README);
+components `components/knowledge-base/` (add-source-form, source-list, +README);
+sidebar nav entry; SQL `supabase/knowledge-base-setup.sql` (+`supabase/README.md`).
+
+---
+
 ## 19. Changelog
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
+
+- **2026-06-16** — **Knowledge Base (Training Module / RAG) — Phase 1.** New admin
+  section **`/admin/knowledge-base`** (sidebar link) to feed the system *book
+  knowledge*. Four input types into one pipeline: PDF (`pdf-parse`), paste text,
+  URL (fetch + strip), image (GPT-4o vision OCR); each tagged with subject,
+  chapter, citation label, and a 3-tier **trust tier**. `POST /api/admin/kb-ingest`
+  runs **extract → chunk (~800 tok, overlap) → embed (`text-embedding-3-small`) →
+  store**; sources go `processing → ready/failed`, original files land in the
+  private `knowledge-base` Storage bucket. **`generate-explanation` is now
+  RAG-grounded**: retrieves top-K enabled chunks via the `match_kb_chunks` RPC,
+  injects a trust-tier-ranked grounding block (no blending conflicts, paraphrase
+  only), and returns `citations`/`grounded` — degrading to the original ungrounded
+  behaviour when the KB is empty/unconfigured. New code: `types/knowledge-base.ts`;
+  services `rag-service` (server) + `knowledge-base-service` (client); route
+  `kb-ingest/` (+README); page `admin/knowledge-base/` (+README); components
+  `knowledge-base/` (+README); SQL `supabase/knowledge-base-setup.sql` (pgvector,
+  `kb_sources`/`kb_chunks` + ivfflat index, `match_kb_chunks` RPC, storage bucket,
+  RLS — run once in the dashboard). **Note:** needs Supabase + `OPENAI_API_KEY`;
+  Phases 2 (book-grounded question generation w/ difficulty) and 3 (student-facing
+  citations + contradiction-review UI) remain planned in `TRAINING-MODULE-PLAN.md`.
 
 - **2026-06-16** — **Difficulty levels: AI-decided + fully editable (admin).** Every question still has
   a required `difficulty` (easy/medium/hard) for past-year and no-year questions alike; now the

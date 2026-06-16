@@ -1,10 +1,15 @@
 # Training Module — Knowledge Base (RAG) Plan
 
-> **Status:** PLAN / not yet implemented (spec for a future build session).
-> **Created:** 2026-06-16. This is the agreed design from the planning discussion;
-> a new session should read this, confirm the OPEN DECISIONS below, then build
-> Phase 1. Keep [`BLUEPRINT.md`](./BLUEPRINT.md) as the source of truth for the
-> shipped app; this file is the forward plan for the "training" feature.
+> **Status:** ✅ **Phase 1 BUILT** (2026-06-16) — Knowledge Base upload + ingestion
+> (pgvector tables, storage bucket, admin section) + grounded explanations.
+> Phases 2–3 remain planned (see §14). Keep [`BLUEPRINT.md`](./BLUEPRINT.md) as
+> the source of truth for the shipped app; this file is the forward plan for the
+> rest of the "training" feature.
+>
+> **Phase 1 decisions taken:** all four input types shipped (PDF, paste, URL,
+> image); image OCR uses **GPT-4o vision** (no new system dependency); trust
+> tiers = recommended 3-tier; one-time DB setup lives in
+> [`../supabase/knowledge-base-setup.sql`](../supabase/knowledge-base-setup.sql).
 
 ## 1. Goal
 

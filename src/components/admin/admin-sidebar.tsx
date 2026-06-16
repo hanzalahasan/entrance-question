@@ -8,6 +8,7 @@ const menuItems = [
   { label: "Question Management", href: "/admin/questions" },
   { label: "Add Question", href: "/admin/add-question" },
   { label: "Excel Import", href: "/admin/import" },
+  { label: "Knowledge Base", href: "/admin/knowledge-base" },
   { label: "Mock Test Settings", href: "/admin/mock-settings" },
   { label: "Settings", href: "/admin/settings" },
 ];

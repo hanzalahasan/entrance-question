@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import OpenAI from "openai";
 
+import { retrieveChunks, buildContextBlock } from "@/services/rag-service";
+
 export async function POST(request: NextRequest) {
   const apiKey = process.env.OPENAI_API_KEY;
 
@@ -25,6 +27,7 @@ export async function POST(request: NextRequest) {
     explanation,
     subjectName,
     topicName,
+    subjectId,
   } = await request.json();
 
   if (!question || !answer) {
@@ -34,9 +37,34 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const client = new OpenAI({ apiKey });
+
+  // ── RAG: ground the explanation in the Knowledge Base when available ──────
+  // Retrieve passages relevant to the question. Returns [] when the KB isn't
+  // set up or nothing matches, so we fall back to an ungrounded answer (the
+  // original behaviour). See blueprint/TRAINING-MODULE-PLAN.md §4.3.
+  const retrieved = await retrieveChunks(
+    client,
+    `${question}\n${optionA ?? ""} ${optionB ?? ""} ${optionC ?? ""} ${optionD ?? ""}`,
+    { subjectId: typeof subjectId === "number" ? subjectId : null, matchCount: 5 }
+  );
+  const citations = retrieved.map((c) => ({
+    sourceId: c.sourceId,
+    title: c.title,
+    citationLabel: c.citationLabel,
+    chapter: c.chapter,
+    trustTier: c.trustTier,
+  }));
+
+  const groundingBlock = retrieved.length
+    ? `\n\nGROUNDING — reference passages from trusted books. Prefer these facts. If two passages disagree, follow the HIGHER trust tier and do NOT blend conflicting facts. Paraphrase in your own words — never copy long verbatim quotes:\n\n${buildContextBlock(
+        retrieved
+      )}`
+    : "";
+
   const prompt = `You are an expert tutor preparing students for competitive entrance exams.
 
-Subject: ${subjectName || "(unspecified)"}  |  Topic: ${topicName || "(unspecified)"}
+Subject: ${subjectName || "(unspecified)"}  |  Topic: ${topicName || "(unspecified)"}${groundingBlock}
 
 Question: ${question}
 A) ${optionA ?? ""}
@@ -76,8 +104,6 @@ important words/phrases — no other markdown (no headers, no bullets). Separate
 Respond with valid JSON only, exactly:
 {"explanation":"...","longExplanation":"...","concepts":["...","..."],"difficulty":"easy|medium|hard"}`;
 
-  const client = new OpenAI({ apiKey });
-
   try {
     const completion = await client.chat.completions.create({
       model: "gpt-4o-mini",
@@ -114,6 +140,10 @@ Respond with valid JSON only, exactly:
       longExplanation,
       concepts,
       difficulty,
+      // Which KB passages grounded this answer ([] if ungrounded). Lets the UI
+      // show "based on [Book, Ch X]" — Phase 3 surfaces these to students.
+      citations,
+      grounded: citations.length > 0,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
