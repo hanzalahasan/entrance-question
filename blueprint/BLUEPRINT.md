@@ -1040,6 +1040,23 @@ sidebar nav entry. Reuses `rag-service` retrieval and the existing
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-16** — **User accounts: login, profiles, dashboard.** Supabase Auth
+  (email/password + Google) via a client-side `AuthProvider`/`useAuth`
+  (`context/auth-context`) wrapping the app in `app/layout`. New
+  `supabase/auth-setup.sql`: `profiles` (auto-created by a signup trigger,
+  name/photo pulled from provider metadata), `mock_results` (saved history,
+  owner-only RLS), and a public `avatars` Storage bucket. **`/login`** —
+  signin/signup toggle + "Continue with Google" (`?next=` redirect; defaults to
+  `/dashboard`). **`/dashboard`** (login-gated) — `ProfileCard` (edit name +
+  upload photo via `profile-service`), `ActivityStats` (tests/avg/best/answered/
+  correct), and `ResultsHistory` (every mock with score + a `MockScoreBar`).
+  **View report** rebuilds a saved record into a `MockAttempt` and reuses
+  `MockDetailedReport` → `MockReview` (no duplication). **Taking a mock now
+  requires login** (`/mock` redirects guests to `/login?next=/mock`) and saves
+  the result to `mock_results` on submit (`mock-result-store`). Header auth widget
+  (`AuthStatus`) on home/mock/dashboard replaces the old placeholder "Sign in".
+  One-time: run `auth-setup.sql` + enable Email/Google providers in the dashboard.
+
 - **2026-06-16** — **Mock Sets — named, fixed difficulty papers (shared).** Replaces
   the old "By difficulty" behaviour, where each student got a *different*,
   randomly-assembled paper. Now difficulty papers are admin-defined **Mock Sets**:

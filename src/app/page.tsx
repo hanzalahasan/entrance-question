@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import TopFilterBar from "@/components/layout/top-filter-bar";
 import QuestionCard from "@/components/question/question-card";
 import ThemeToggle from "@/components/theme-toggle";
+import AuthStatus from "@/components/auth/auth-status";
 
 import type { Question } from "@/types/question";
 import type { QuestionFilters } from "@/types/filter";
@@ -39,11 +40,8 @@ export default function HomePage() {
           </h1>
 
           <div className="flex items-center gap-2">
+            <AuthStatus />
             <ThemeToggle />
-
-            <button className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 dark:border-slate-600 dark:bg-slate-800 dark:text-white">
-              👤 Sign in
-            </button>
           </div>
         </div>
 

@@ -93,4 +93,26 @@ export type MockResult = {
   subjects: MockSubjectScore[];
 };
 
+// A submitted mock test saved to a user's history (mirrors `mock_results`).
+export type MockResultRecord = {
+  id: number;
+  userId: string;
+  selection: MockSelection;
+  marks: number;
+  maxMarks: number;
+  markCorrect: number;
+  markWrong: number;
+  totalQuestions: number;
+  correct: number;
+  wrong: number;
+  unanswered: number;
+  questionIds: number[];
+  answers: Record<number, string>;
+  startedAt: string | null;
+  submittedAt: string | null;
+  durationMinutes: number | null;
+  pauseCount: number;
+  createdAt: string;
+};
+
 export const DIFFICULTY_LEVELS: DifficultyLevel[] = ["easy", "medium", "hard"];

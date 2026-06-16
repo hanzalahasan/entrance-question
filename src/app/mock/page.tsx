@@ -29,7 +29,11 @@ import {
   saveAttempt,
 } from "@/services/mock-attempt-store";
 
+import { useAuth } from "@/context/auth-context";
+import { saveMockResult } from "@/services/mock-result-store";
+
 import ThemeToggle from "@/components/theme-toggle";
+import AuthStatus from "@/components/auth/auth-status";
 import MockRules from "@/components/mock/mock-rules";
 import MockSetup from "@/components/mock/mock-setup";
 import MockExam from "@/components/mock/mock-exam";
@@ -40,6 +44,7 @@ type Phase = "loading" | "rules" | "setup" | "exam" | "result" | "review";
 
 export default function MockPage() {
   const router = useRouter();
+  const { user, loading: authLoading, authReady } = useAuth();
 
   const [phase, setPhase] = useState<Phase>("loading");
   const [allQuestions, setAllQuestions] = useState<Question[]>([]);
@@ -82,6 +87,13 @@ export default function MockPage() {
       }
     );
   }, []);
+
+  // Taking a mock requires an account (so results save to the dashboard).
+  useEffect(() => {
+    if (authReady && !authLoading && !user) {
+      router.replace("/login?next=/mock");
+    }
+  }, [authReady, authLoading, user, router]);
 
   const years = Array.from(
     new Set(
@@ -131,8 +143,11 @@ export default function MockPage() {
     // Keep the final attempt in memory so the result + answer review can use the
     // submitted answers and timing (it's removed from storage so it won't resume).
     setAttempt(finalAttempt);
-    setResult(scoreMock(finalAttempt, examQuestions));
+    const scored = scoreMock(finalAttempt, examQuestions);
+    setResult(scored);
     clearAttempt();
+    // Save to the user's history (best-effort; the result still shows if it fails).
+    if (user) saveMockResult(user.id, finalAttempt, scored).catch(() => {});
     setPhase("result");
   }
 
@@ -219,7 +234,10 @@ function Shell({ children }: { children: React.ReactNode }) {
           >
             Entrance Question
           </Link>
-          <ThemeToggle />
+          <div className="flex items-center gap-3">
+            <AuthStatus />
+            <ThemeToggle />
+          </div>
         </div>
         {children}
       </div>
