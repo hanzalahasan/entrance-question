@@ -52,10 +52,15 @@ export default function MockMeta({ attempt }: { attempt: MockAttempt }) {
           text: `Past Year · ${sel.year}`,
           cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
         }
-      : {
-          text: `Practice · ${sel.difficulty}`,
-          cls: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
-        };
+      : sel.mode === "set"
+        ? {
+            text: `${sel.setName} · ${sel.difficulty}`,
+            cls: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
+          }
+        : {
+            text: `Practice · ${sel.difficulty}`,
+            cls: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300",
+          };
 
   // Active time spent answering = full duration minus whatever was left on the
   // clock at submit (pauses don't burn the clock, so this is true working time).

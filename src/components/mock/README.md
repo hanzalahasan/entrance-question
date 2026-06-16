@@ -35,7 +35,9 @@ Phases: `loading → rules → setup → exam → result → review`.
 
 1. **rules** — `MockRules` shows the official format + distribution + rules.
 2. **setup** — `MockSetup` picks a `MockSelection`: `{ mode: "past_year", year }`
-   or `{ mode: "difficulty", difficulty }`.
+   or `{ mode: "set", setId, setName, difficulty }` (a named **Mock Set** chosen
+   under "By difficulty"). Difficulty papers are no longer assembled live for
+   students — they pick a published set so everyone gets the same questions.
 3. **exam** — `MockExam` runs the paper built by `buildMockQuestions`. A
    10-second grace window precedes the countdown; ←/→/Enter move questions, ↑/↓
    choose an option; pauses are counted on the attempt.

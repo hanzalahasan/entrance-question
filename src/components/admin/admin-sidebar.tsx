@@ -11,6 +11,7 @@ const menuItems = [
   { label: "Knowledge Base", href: "/admin/knowledge-base" },
   { label: "Generate Questions", href: "/admin/generate-questions" },
   { label: "Mock Test Settings", href: "/admin/mock-settings" },
+  { label: "Mock Sets", href: "/admin/mock-sets" },
   { label: "Settings", href: "/admin/settings" },
 ];
 

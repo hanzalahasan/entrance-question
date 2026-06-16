@@ -5,12 +5,23 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 import type { Question } from "@/types/question";
-import type { MockAttempt, MockConfig, MockResult, MockSelection } from "@/types/mock";
+import type {
+  MockAttempt,
+  MockConfig,
+  MockResult,
+  MockSelection,
+  MockSet,
+} from "@/types/mock";
 
 import { getStoredQuestions } from "@/services/admin-question-store";
 import { getStoredSubjects } from "@/services/master-data-store";
 import { resolveMockConfig } from "@/services/mock-config-service";
-import { buildMockQuestions, scoreMock } from "@/services/mock-service";
+import {
+  buildMockQuestions,
+  resolveSetQuestions,
+  scoreMock,
+} from "@/services/mock-service";
+import { getPublishedMockSets } from "@/services/mock-set-store";
 import {
   clearAttempt,
   getActiveAttempt,
@@ -33,6 +44,7 @@ export default function MockPage() {
   const [phase, setPhase] = useState<Phase>("loading");
   const [allQuestions, setAllQuestions] = useState<Question[]>([]);
   const [config, setConfig] = useState<MockConfig | null>(null);
+  const [sets, setSets] = useState<MockSet[]>([]);
 
   const [examQuestions, setExamQuestions] = useState<Question[]>([]);
   const [attempt, setAttempt] = useState<MockAttempt | null>(null);
@@ -41,11 +53,15 @@ export default function MockPage() {
 
   // Load the bank + config, and resume an in-progress attempt if there is one.
   useEffect(() => {
-    Promise.all([getStoredQuestions(), getStoredSubjects()]).then(
-      ([all, subjects]) => {
+    Promise.all([
+      getStoredQuestions(),
+      getStoredSubjects(),
+      getPublishedMockSets(),
+    ]).then(([all, subjects, publishedSets]) => {
         const published = all.filter((q) => q.status === "published");
         setAllQuestions(published);
         setConfig(resolveMockConfig(subjects));
+        setSets(publishedSets);
 
         const active = getActiveAttempt();
         if (active) {
@@ -77,7 +93,14 @@ export default function MockPage() {
 
   function startMock(selection: MockSelection) {
     if (!config) return;
-    const qs = buildMockQuestions(allQuestions, selection, config);
+    // A set is a frozen list of questions; everything else is assembled live.
+    const qs =
+      selection.mode === "set"
+        ? resolveSetQuestions(
+            allQuestions,
+            sets.find((s) => s.id === selection.setId)?.questionIds ?? []
+          )
+        : buildMockQuestions(allQuestions, selection, config);
     if (qs.length === 0) {
       window.alert(
         "No questions are available for this selection yet. Try another option."
@@ -146,6 +169,7 @@ export default function MockPage() {
       {phase === "setup" && (
         <MockSetup
           years={years}
+          sets={sets}
           onStart={startMock}
           onBack={() => setPhase("rules")}
         />

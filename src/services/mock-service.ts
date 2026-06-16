@@ -99,6 +99,32 @@ export function buildMockQuestions(
   return result;
 }
 
+// Resolve a Mock Set's frozen question ids into published Question objects, in
+// the set's order but grouped by subject (first-seen order) so the exam's
+// section tabs stay clean. Missing/unpublished ids are silently dropped.
+export function resolveSetQuestions(
+  all: Question[],
+  questionIds: number[]
+): Question[] {
+  const byId = new Map(
+    all.filter((q) => q.status === "published").map((q) => [q.id, q])
+  );
+  const resolved = questionIds
+    .map((id) => byId.get(id))
+    .filter((q): q is Question => Boolean(q));
+
+  const order: number[] = [];
+  const groups = new Map<number, Question[]>();
+  for (const q of resolved) {
+    if (!groups.has(q.subjectId)) {
+      groups.set(q.subjectId, []);
+      order.push(q.subjectId);
+    }
+    groups.get(q.subjectId)!.push(q);
+  }
+  return order.flatMap((sid) => groups.get(sid)!);
+}
+
 // Order a flat list of questions grouped by the config's subject order, with any
 // leftover subjects appended in id order.
 function groupBySubject(questions: Question[], config: MockConfig): Question[] {

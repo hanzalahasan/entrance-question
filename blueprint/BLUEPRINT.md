@@ -1040,6 +1040,23 @@ sidebar nav entry. Reuses `rag-service` retrieval and the existing
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-16** — **Mock Sets — named, fixed difficulty papers (shared).** Replaces
+  the old "By difficulty" behaviour, where each student got a *different*,
+  randomly-assembled paper. Now difficulty papers are admin-defined **Mock Sets**:
+  a named, frozen, ordered list of question ids tagged with a difficulty (like a
+  past-year paper, but identified by a set name), so **everyone who takes a set
+  gets the same questions**. New shared Supabase table `mock_sets`
+  (`supabase/mock-sets-setup.sql`; localStorage fallback) + `mock-set-store`.
+  **Admin** `/admin/mock-sets` (sidebar): `MockSetBuilder` (name + difficulty →
+  **auto-fill** from the difficulty distribution via `buildMockQuestions` → add/
+  remove individual questions by search → Save draft/published) and
+  `MockSetList` (grouped by difficulty, publish/edit/delete). **Student** setup's
+  "By difficulty" now picks a difficulty → a published **set** (only published
+  sets show); `MockSelection` gained `{ mode: "set", setId, setName, difficulty }`
+  and `mock-service.resolveSetQuestions` turns the frozen ids into the paper
+  (grouped by subject for the section tabs). Result/exam mode badge shows the set
+  name. `{ mode: "difficulty" }` is retained internally for the admin auto-fill.
+
 - **2026-06-16** — **Mock result/report: segmented progress bars + UI polish.** New
   reusable `MockScoreBar` — a green/red/grey segmented bar (correct/wrong/
   unanswered) with an optional count legend. The **result page** now shows it

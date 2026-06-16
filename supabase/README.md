@@ -9,6 +9,7 @@ bucket creation). These are one-time setup scripts, not app code.
 | File | Purpose |
 |---|---|
 | `knowledge-base-setup.sql` | Training Module / RAG. Enables `pgvector`; creates `kb_sources` + `kb_chunks` (+ vector index); the `match_kb_chunks` similarity-search RPC; the private `knowledge-base` Storage bucket; and permissive RLS policies that mirror the app's existing anon-key access. |
+| `mock-sets-setup.sql` | Mock Sets — named, fixed difficulty papers. Creates the `mock_sets` table (name, difficulty, frozen `question_ids`, status) + permissive RLS, so every student who takes a set gets the same questions. |
 
 ## How to run
 

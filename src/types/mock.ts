@@ -6,7 +6,24 @@ export type MockMode = "past_year" | "difficulty";
 
 export type MockSelection =
   | { mode: "past_year"; year: string }
-  | { mode: "difficulty"; difficulty: DifficultyLevel };
+  // `difficulty` is used internally by the admin "auto-fill" when assembling a
+  // candidate set; students no longer start a raw difficulty paper directly.
+  | { mode: "difficulty"; difficulty: DifficultyLevel }
+  // What a student actually starts: a specific named Mock Set (same questions
+  // for everyone who takes it).
+  | { mode: "set"; setId: number; setName: string; difficulty: DifficultyLevel };
+
+// A named, frozen difficulty paper defined by an admin. Like a past-year paper,
+// but identified by a set name and reusable. Lives in Supabase (`mock_sets`) so
+// every user gets the same questions. See supabase/mock-sets-setup.sql.
+export type MockSet = {
+  id: number;
+  name: string;
+  difficulty: DifficultyLevel;
+  questionIds: number[]; // ordered, frozen
+  status: "draft" | "published";
+  createdAt: string;
+};
 
 // Admin-defined distribution. Each subject has a total count and an optional
 // per-topic breakdown (topic counts should sum to <= the subject count; any

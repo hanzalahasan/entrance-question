@@ -1,30 +1,51 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { DifficultyLevel } from "@/types/question";
-import type { MockMode, MockSelection } from "@/types/mock";
+import type { MockMode, MockSelection, MockSet } from "@/types/mock";
 import { DIFFICULTY_LEVELS } from "@/types/mock";
 
 type MockSetupProps = {
   years: string[];
+  sets: MockSet[]; // published mock sets
   onStart: (selection: MockSelection) => void;
   onBack: () => void;
 };
 
-export default function MockSetup({ years, onStart, onBack }: MockSetupProps) {
+export default function MockSetup({ years, sets, onStart, onBack }: MockSetupProps) {
   const [mode, setMode] = useState<MockMode>("past_year");
   const [year, setYear] = useState<string>(years[0] ?? "");
   const [difficulty, setDifficulty] = useState<DifficultyLevel>("medium");
+  const [setId, setSetId] = useState<number | null>(null);
 
-  const canStart = mode === "past_year" ? Boolean(year) : true;
+  // Sets available at the chosen difficulty.
+  const setsForDifficulty = useMemo(
+    () => sets.filter((s) => s.difficulty === difficulty),
+    [sets, difficulty]
+  );
+
+  const canStart =
+    mode === "past_year" ? Boolean(year) : setId != null;
 
   function start() {
     if (mode === "past_year") {
       if (!year) return;
       onStart({ mode: "past_year", year });
     } else {
-      onStart({ mode: "difficulty", difficulty });
+      const set = sets.find((s) => s.id === setId);
+      if (!set) return;
+      onStart({
+        mode: "set",
+        setId: set.id,
+        setName: set.name,
+        difficulty: set.difficulty,
+      });
     }
+  }
+
+  function pickDifficulty(level: DifficultyLevel) {
+    setDifficulty(level);
+    setSetId(null); // reset the chosen set when the difficulty changes
   }
 
   return (
@@ -33,7 +54,7 @@ export default function MockSetup({ years, onStart, onBack }: MockSetupProps) {
         Choose your paper
       </h1>
       <p className="mb-6 text-sm font-semibold text-gray-500 dark:text-slate-400">
-        Take a real past-year paper, or generate one at a difficulty level.
+        Take a real past-year paper, or a curated set at a difficulty level.
       </p>
 
       {/* Mode toggle */}
@@ -61,7 +82,7 @@ export default function MockSetup({ years, onStart, onBack }: MockSetupProps) {
         >
           <p className="font-black text-gray-900 dark:text-white">By difficulty</p>
           <p className="mt-1 text-xs font-semibold text-gray-500 dark:text-slate-400">
-            A fresh paper of easy / medium / hard questions.
+            A curated set of easy / medium / hard questions.
           </p>
         </button>
       </div>
@@ -91,24 +112,59 @@ export default function MockSetup({ years, onStart, onBack }: MockSetupProps) {
           )}
         </div>
       ) : (
-        <div>
-          <label className="mb-2 block text-sm font-black text-gray-500 dark:text-slate-400">
-            Select difficulty
-          </label>
-          <div className="grid grid-cols-3 gap-3">
-            {DIFFICULTY_LEVELS.map((level) => (
-              <button
-                key={level}
-                onClick={() => setDifficulty(level)}
-                className={`rounded-2xl border py-3 font-black capitalize transition active:scale-95 ${
-                  difficulty === level
-                    ? "border-blue-500 bg-blue-50 text-blue-700 ring-2 ring-blue-500/30 dark:bg-slate-700 dark:text-white"
-                    : "border-gray-200 text-gray-700 hover:border-blue-300 dark:border-slate-600 dark:text-white"
-                }`}
-              >
-                {level}
-              </button>
-            ))}
+        <div className="space-y-5">
+          <div>
+            <label className="mb-2 block text-sm font-black text-gray-500 dark:text-slate-400">
+              Select difficulty
+            </label>
+            <div className="grid grid-cols-3 gap-3">
+              {DIFFICULTY_LEVELS.map((level) => (
+                <button
+                  key={level}
+                  onClick={() => pickDifficulty(level)}
+                  className={`rounded-2xl border py-3 font-black capitalize transition active:scale-95 ${
+                    difficulty === level
+                      ? "border-blue-500 bg-blue-50 text-blue-700 ring-2 ring-blue-500/30 dark:bg-slate-700 dark:text-white"
+                      : "border-gray-200 text-gray-700 hover:border-blue-300 dark:border-slate-600 dark:text-white"
+                  }`}
+                >
+                  {level}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-black text-gray-500 dark:text-slate-400">
+              Select a set
+            </label>
+            {setsForDifficulty.length === 0 ? (
+              <p className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-700 dark:border-amber-900 dark:bg-amber-900/20 dark:text-amber-300">
+                No {difficulty} sets are published yet. An admin can create them in
+                Mock Sets.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {setsForDifficulty.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => setSetId(s.id)}
+                    className={`flex w-full items-center justify-between rounded-2xl border p-4 text-left transition active:scale-[0.99] ${
+                      setId === s.id
+                        ? "border-blue-500 bg-blue-50 ring-2 ring-blue-500/30 dark:bg-slate-700"
+                        : "border-gray-200 hover:border-blue-300 dark:border-slate-600"
+                    }`}
+                  >
+                    <span className="font-black text-gray-900 dark:text-white">
+                      {s.name}
+                    </span>
+                    <span className="text-xs font-bold text-gray-500 dark:text-slate-400">
+                      {s.questionIds.length} questions
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
