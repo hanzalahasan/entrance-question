@@ -9,10 +9,7 @@ import type { MockAttempt, MockConfig, MockResult, MockSelection } from "@/types
 
 import { getStoredQuestions } from "@/services/admin-question-store";
 import { getStoredSubjects } from "@/services/master-data-store";
-import {
-  resolveMockConfig,
-  totalConfiguredQuestions,
-} from "@/services/mock-config-service";
+import { resolveMockConfig } from "@/services/mock-config-service";
 import { buildMockQuestions, scoreMock } from "@/services/mock-service";
 import {
   clearAttempt,
@@ -135,7 +132,6 @@ export default function MockPage() {
       {phase === "rules" && (
         <MockRules
           durationMinutes={config.durationMinutes}
-          totalQuestions={totalConfiguredQuestions(config)}
           markCorrect={config.markCorrect}
           markWrong={config.markWrong}
           onNext={() => setPhase("setup")}

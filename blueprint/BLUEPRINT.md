@@ -931,6 +931,14 @@ preview table (then AI-fill / import as above).
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-16** — **Mock rules window now states the official MECEE-BL format clearly.** It shows an
+  "Exam format" card grid (Duration 3 hours (180 minutes), Total Questions 200 MCQs, Total Marks 200,
+  Marking +1 / −0.25) and a "Question distribution (MBBS cluster)" table (Physics ~50, Chemistry ~50,
+  Zoology ~40, Botany ~40, MAT ~20, Total 200). These are driven by new constants
+  `OFFICIAL_TOTAL_QUESTIONS` / `OFFICIAL_DISTRIBUTION` in `mock-config-service`, so the rules always
+  show the real 200/200 structure regardless of how the local bank/admin config currently sums (the
+  earlier window mistakenly showed the config total, e.g. 180 when the MAT subject was missing).
+
 - **2026-06-16** — **Mock Test module (MECEE-BL / CEE format).** New student route `/mock`: rules
   window → mode select (past-year dropdown **or** easy/medium/hard) → timed exam → scored result.
   Exam runner has a 180-min countdown with **pause/resume (persists across reloads), reset, and

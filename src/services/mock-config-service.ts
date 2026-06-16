@@ -21,6 +21,18 @@ export const DEFAULT_DURATION_MINUTES = 180;
 export const DEFAULT_MARK_CORRECT = 1;
 export const DEFAULT_MARK_WRONG = -0.25;
 
+// The official MECEE-BL (MBBS cluster) exam format — shown verbatim in the
+// rules window so students always see the real structure regardless of how the
+// local question bank is currently filled.
+export const OFFICIAL_TOTAL_QUESTIONS = 200;
+export const OFFICIAL_DISTRIBUTION: { name: string; count: number }[] = [
+  { name: "Physics", count: 50 },
+  { name: "Chemistry", count: 50 },
+  { name: "Zoology", count: 40 },
+  { name: "Botany", count: 40 },
+  { name: "Mental Agility Test (MAT)", count: 20 },
+];
+
 // Build a sensible default config from the active subjects (counts seeded from
 // the official distribution; unknown subjects start at 0 for the admin to set).
 export function buildDefaultConfig(subjects: SubjectMaster[]): MockConfig {
