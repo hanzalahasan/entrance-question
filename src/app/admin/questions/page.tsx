@@ -18,6 +18,7 @@ import {
   publishQuestion,
   unpublishQuestion,
   bulkUpdateQuestionStatus,
+  bulkUpdateQuestionDifficulty,
   deleteQuestion,
   bulkDeleteQuestions,
   saveQuestions,
@@ -62,6 +63,7 @@ function QuestionManagementContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [genProgress, setGenProgress] = useState<{ done: number; total: number } | null>(null);
+  const [aiTagging, setAiTagging] = useState(false);
 
   async function load() {
     try {
@@ -227,6 +229,95 @@ function QuestionManagementContent() {
     }
   }
 
+  // Inline per-row level change (optimistic, then persisted).
+  async function handleDifficultyChange(
+    id: number,
+    difficulty: Question["difficulty"]
+  ) {
+    setQuestions((prev) =>
+      prev.map((q) => (q.id === id ? { ...q, difficulty } : q))
+    );
+    try {
+      await bulkUpdateQuestionDifficulty([id], difficulty);
+    } catch {
+      setError("Failed to update difficulty.");
+      await load();
+    }
+  }
+
+  async function handleBulkSetDifficulty(difficulty: Question["difficulty"]) {
+    try {
+      await bulkUpdateQuestionDifficulty(selectedIds, difficulty);
+      setSelectedIds([]);
+      await load();
+    } catch {
+      setError("Bulk difficulty update failed.");
+    }
+  }
+
+  // Classify each selected question via AI, then persist grouped by level.
+  async function handleBulkAiTagDifficulty() {
+    const targets = questions.filter((q) => selectedIds.includes(q.id));
+    if (targets.length === 0) return;
+
+    setError("");
+    setAiTagging(true);
+    const byLevel: Record<Question["difficulty"], number[]> = {
+      easy: [],
+      medium: [],
+      hard: [],
+    };
+
+    for (const q of targets) {
+      try {
+        const opt = (key: string) =>
+          q.options.find((o) => o.key === key)?.value ?? "";
+        const res = await fetch("/api/admin/tag-difficulty", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            question: q.question,
+            optionA: opt("A"),
+            optionB: opt("B"),
+            optionC: opt("C"),
+            optionD: opt("D"),
+            answer: q.answer,
+            subjectName: q.subjectName,
+            topicName: q.topicName,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error ?? "AI tagging failed.");
+          break;
+        }
+        const level: Question["difficulty"] = ["easy", "medium", "hard"].includes(
+          data.difficulty
+        )
+          ? data.difficulty
+          : "medium";
+        byLevel[level].push(q.id);
+      } catch {
+        setError("Network error during AI tagging.");
+        break;
+      }
+    }
+
+    try {
+      for (const level of ["easy", "medium", "hard"] as const) {
+        if (byLevel[level].length > 0) {
+          await bulkUpdateQuestionDifficulty(byLevel[level], level);
+        }
+      }
+    } catch {
+      setError("Failed to save tagged difficulties.");
+    }
+
+    setAiTagging(false);
+    setSelectedIds([]);
+    await load();
+  }
+
   function handleDelete(id: number) {
     setConfirm({
       message: "Delete this question permanently? This cannot be undone.",
@@ -356,6 +447,9 @@ function QuestionManagementContent() {
           onBulkPublish={handleBulkPublish}
           onBulkUnpublish={handleBulkUnpublish}
           onBulkDelete={handleBulkDelete}
+          onBulkSetDifficulty={handleBulkSetDifficulty}
+          onBulkAiTagDifficulty={handleBulkAiTagDifficulty}
+          aiTagging={aiTagging}
           onClearSelection={() => setSelectedIds([])}
         />
 
@@ -380,6 +474,7 @@ function QuestionManagementContent() {
               onPublish={handlePublish}
               onUnpublish={handleUnpublish}
               onDelete={handleDelete}
+              onDifficultyChange={handleDifficultyChange}
             />
             <QuestionPagination
               currentPage={currentPage}

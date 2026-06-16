@@ -11,6 +11,13 @@ type QuestionTableProps = {
   onPublish: (id: number) => void;
   onUnpublish: (id: number) => void;
   onDelete: (id: number) => void;
+  onDifficultyChange: (id: number, difficulty: Question["difficulty"]) => void;
+};
+
+const DIFFICULTY_STYLES: Record<string, string> = {
+  easy: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
+  medium: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300",
+  hard: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
 };
 
 function getDuplicateLabel(status?: Question["duplicateCheckStatus"]) {
@@ -27,6 +34,7 @@ export default function QuestionTable({
   onPublish,
   onUnpublish,
   onDelete,
+  onDifficultyChange,
 }: QuestionTableProps) {
   const safeQuestions = Array.isArray(questions) ? questions : [];
   const safeSelectedIds = Array.isArray(selectedIds) ? selectedIds : [];
@@ -105,7 +113,26 @@ export default function QuestionTable({
                 <td className="p-4">{question.subjectName || "-"}</td>
                 <td className="p-4">{question.topicName || "-"}</td>
                 <td className="p-4">{question.year || "-"}</td>
-                <td className="p-4 capitalize">{question.difficulty}</td>
+                <td className="p-4">
+                  <select
+                    value={question.difficulty}
+                    onChange={(e) =>
+                      onDifficultyChange(
+                        question.id,
+                        e.target.value as Question["difficulty"]
+                      )
+                    }
+                    title="Change difficulty"
+                    className={`cursor-pointer rounded-full border-0 px-3 py-1 text-xs font-black capitalize outline-none ${
+                      DIFFICULTY_STYLES[question.difficulty] ||
+                      "bg-gray-100 text-gray-700"
+                    }`}
+                  >
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Hard</option>
+                  </select>
+                </td>
 
                 <td className="p-4">
                   <span

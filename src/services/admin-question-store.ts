@@ -9,6 +9,10 @@ export const publishQuestion = (id: number) => questionRepo.patchStatus(id, "pub
 export const unpublishQuestion = (id: number) => questionRepo.patchStatus(id, "unpublished");
 export const bulkUpdateQuestionStatus = (ids: number[], status: Question["status"]) =>
   questionRepo.bulkPatchStatus(ids, status);
+export const bulkUpdateQuestionDifficulty = (
+  ids: number[],
+  difficulty: Question["difficulty"]
+) => questionRepo.bulkPatchDifficulty(ids, difficulty);
 export const deleteQuestion = (id: number) => questionRepo.remove(id);
 export const bulkDeleteQuestions = (ids: number[]) => questionRepo.bulkRemove(ids);
 export const saveQuestions = (questions: Question[]) => questionRepo.replaceAll(questions);

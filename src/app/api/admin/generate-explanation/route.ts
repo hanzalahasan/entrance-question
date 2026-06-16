@@ -65,11 +65,16 @@ Produce TWO explanations and concept tags:
 
 3. "concepts" — 3 to 6 lowercase tag phrases capturing the key ideas (used to link related questions).
 
+4. "difficulty" — classify the question as EXACTLY one of "easy", "medium", or "hard":
+   - "easy": direct recall, a definition, or a single-step question; the correct option is obvious.
+   - "medium": needs 2–3 steps or applying one concept; has plausible distractors.
+   - "hard": multi-step / multi-concept reasoning, calculation-heavy, or has tricky distractors.
+
 Rules: be accurate and exam-appropriate, do NOT invent facts. Use **double asterisks** ONLY to bold
 important words/phrases — no other markdown (no headers, no bullets). Separate paragraphs with blank lines.
 
 Respond with valid JSON only, exactly:
-{"explanation":"...","longExplanation":"...","concepts":["...","..."]}`;
+{"explanation":"...","longExplanation":"...","concepts":["...","..."],"difficulty":"easy|medium|hard"}`;
 
   const client = new OpenAI({ apiKey });
 
@@ -93,6 +98,9 @@ Respond with valid JSON only, exactly:
           .map((c: unknown) => String(c).trim().toLowerCase())
           .filter(Boolean)
       : [];
+    const difficulty = ["easy", "medium", "hard"].includes(parsed.difficulty)
+      ? (parsed.difficulty as "easy" | "medium" | "hard")
+      : "medium";
 
     if (!longExplanation && !shortExplanation) {
       return NextResponse.json(
@@ -105,6 +113,7 @@ Respond with valid JSON only, exactly:
       explanation: shortExplanation,
       longExplanation,
       concepts,
+      difficulty,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";

@@ -24,6 +24,10 @@ export interface QuestionRepo {
   update(q: Question): Promise<void>;
   patchStatus(id: number, status: Question["status"]): Promise<void>;
   bulkPatchStatus(ids: number[], status: Question["status"]): Promise<void>;
+  bulkPatchDifficulty(
+    ids: number[],
+    difficulty: Question["difficulty"]
+  ): Promise<void>;
   remove(id: number): Promise<void>;
   bulkRemove(ids: number[]): Promise<void>;
   replaceAll(questions: Question[]): Promise<void>;
@@ -98,6 +102,17 @@ const localQuestionRepo: QuestionRepo = {
       QUESTIONS_KEY,
       all.map((q) =>
         ids.includes(q.id) ? { ...q, status, updatedAt: new Date().toISOString() } : q
+      )
+    );
+  },
+  async bulkPatchDifficulty(ids, difficulty) {
+    const all = read<Question[]>(QUESTIONS_KEY, sampleQuestions);
+    write(
+      QUESTIONS_KEY,
+      all.map((q) =>
+        ids.includes(q.id)
+          ? { ...q, difficulty, updatedAt: new Date().toISOString() }
+          : q
       )
     );
   },
@@ -288,6 +303,13 @@ const supabaseQuestionRepo: QuestionRepo = {
   },
   async bulkPatchStatus(ids, status) {
     const { error } = await sb().from("questions").update({ status }).in("id", ids);
+    if (error) throw error;
+  },
+  async bulkPatchDifficulty(ids, difficulty) {
+    const { error } = await sb()
+      .from("questions")
+      .update({ difficulty })
+      .in("id", ids);
     if (error) throw error;
   },
   async remove(id) {

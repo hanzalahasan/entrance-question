@@ -76,6 +76,8 @@ export default function QuestionForm({
           questionData.concepts && questionData.concepts.length > 0
             ? questionData.concepts
             : data.concepts ?? [],
+        // AI-suggested difficulty (still editable via the selector below).
+        difficulty: data.difficulty || questionData.difficulty,
         updatedAt: new Date().toISOString(),
       });
     } catch {

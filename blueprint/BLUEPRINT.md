@@ -931,6 +931,18 @@ preview table (then AI-fill / import as above).
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-16** — **Difficulty levels: AI-decided + fully editable (admin).** Every question still has
+  a required `difficulty` (easy/medium/hard) for past-year and no-year questions alike; now the
+  **AI suggests** it and it's editable everywhere. (1) `generate-explanation` also returns a
+  rubric-based `difficulty` (easy = recall/1-step, medium = 2–3 steps/one concept, hard =
+  multi-step/calculation/tricky), which the Edit form's "Generate with AI" applies (still editable).
+  (2) New lightweight route **`POST /api/admin/tag-difficulty`** (difficulty-only classifier; folder
+  has its own README). (3) Question Management gained an **inline per-row difficulty dropdown**, a
+  bulk **"Set difficulty"** selector, and a bulk **"✨ AI: tag difficulty"** action (classifies each
+  selected question, saves grouped by level). New repo method `bulkPatchDifficulty` (+ store
+  `bulkUpdateQuestionDifficulty`) for local + Supabase. Difficulty remains editable via the form,
+  inline dropdown, or bulk set.
+
 - **2026-06-16** — **Mock rules window now states the official MECEE-BL format clearly.** It shows an
   "Exam format" card grid (Duration 3 hours (180 minutes), Total Questions 200 MCQs, Total Marks 200,
   Marking +1 / −0.25) and a "Question distribution (MBBS cluster)" table (Physics ~50, Chemistry ~50,
