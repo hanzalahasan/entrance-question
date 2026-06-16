@@ -15,8 +15,11 @@ src/components/mock/                         Student UI (this folder)
   mock-rules.tsx      Rules & official-format window (200 Q / 200 marks / 180 min + distribution)
   mock-setup.tsx      Mode select: past-year dropdown OR easy/medium/hard
   mock-exam.tsx       The runner: countdown, pause/resume/reset, navigation, palette, submit
-  mock-palette.tsx    Question-number grid + subject section-jump tabs
-  mock-result.tsx     Score breakdown (net marks, per-subject table)
+  mock-palette.tsx    Question-number grid + section tabs (live: answered; review: correct/wrong/grey)
+  mock-result.tsx     Score breakdown + timing meta + "Detailed report" button
+  mock-meta.tsx       Reusable header: mode (year/difficulty), date, start/end, time taken, pauses
+  mock-detailed-report.tsx  Modal: per-subject → per-topic breakdown + "Check your answers"
+  mock-review.tsx     Read-only graded walkthrough (correct/wrong options + explanation window)
 src/components/admin/mock-settings-form.tsx Admin config form (duration, marks, per-subject+topic)
 
 src/types/mock.ts                           MockConfig, MockSelection, MockAttempt, MockResult, ...
@@ -27,16 +30,25 @@ src/services/mock-attempt-store.ts          Active-attempt persistence (pause/re
 
 ## Student flow (`app/mock/page.tsx`)
 
-Phases: `loading → rules → setup → exam → result`.
+Phases: `loading → rules → setup → exam → result → review`.
 
 1. **rules** — `MockRules` shows the official format + distribution + rules.
 2. **setup** — `MockSetup` picks a `MockSelection`: `{ mode: "past_year", year }`
    or `{ mode: "difficulty", difficulty }`.
-3. **exam** — `MockExam` runs the paper built by `buildMockQuestions`.
-4. **result** — `MockResultView` shows `scoreMock` output.
+3. **exam** — `MockExam` runs the paper built by `buildMockQuestions`. A
+   10-second grace window precedes the countdown; ←/→/Enter move questions, ↑/↓
+   choose an option; pauses are counted on the attempt.
+4. **result** — `MockResultView` shows `scoreMock` output + a **timing/mode
+   header** (`MockMeta`) and a **Detailed report** button → `MockDetailedReport`
+   (per-subject → per-topic correct/wrong/unanswered).
+5. **review** — from the detailed report's **Check your answers**, `MockReview`
+   replays each question read-only: correct option green, the student's wrong
+   pick red, an **explanation window** per question, and a correctness-coloured
+   palette (green/red/grey). Answers can't be changed.
 
 On load, an in-progress attempt (from `getActiveAttempt`) is resumed straight
-into **exam** (opened **paused**).
+into **exam** (opened **paused**). The submitted attempt is kept in memory so
+result + review can use its answers and timing.
 
 ## Paper assembly (`mock-service.buildMockQuestions`)
 
@@ -44,16 +56,18 @@ into **exam** (opened **paused**).
   grouped by subject. No quota enforcement — it's the real paper.
 - **difficulty**: built to the admin distribution from `isMockEligible` published
   questions at the chosen difficulty:
-  1. fill each subject's **per-topic** quotas,
-  2. fill the rest of the **subject** quota from the difficulty pool,
-  3. **top up** any shortfall from the same subject at large (any
-     difficulty/source) so the paper keeps its target size.
+  1. fill each subject's **per-topic** quotas (difficulty pool only),
+  2. fill the rest of the **subject** quota from the difficulty pool.
+  Difficulty papers are **pure** — there is no cross-difficulty top-up, so a
+  "medium" paper contains only medium questions (it may be shorter than the
+  quota if the bank is thin) and the "Practice · medium" label stays truthful.
 
 ## Scoring (`mock-service.scoreMock`)
 
 `+markCorrect` per correct, `+markWrong` (negative) per wrong, `0` unanswered.
-Returns net marks, max marks, attempted/correct/wrong/unanswered, and a
-per-subject breakdown.
+Returns net marks, max marks, attempted/correct/wrong/unanswered, a per-subject
+breakdown, and **per-topic** sub-breakdowns inside each subject (for the
+detailed report).
 
 ## Timing & persistence
 

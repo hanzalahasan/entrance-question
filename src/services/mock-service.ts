@@ -5,6 +5,7 @@ import type {
   MockResult,
   MockSelection,
   MockSubjectScore,
+  MockTopicScore,
 } from "@/types/mock";
 
 function shuffle<T>(items: T[]): T[] {
@@ -143,6 +144,8 @@ export function scoreMock(
 ): MockResult {
   const byId = new Map(questions.map((q) => [q.id, q]));
   const subjectMap = new Map<number, MockSubjectScore>();
+  // Per-subject topic accumulators, keyed `${subjectId}:${topicId}`.
+  const topicMap = new Map<string, MockTopicScore>();
 
   let correct = 0;
   let wrong = 0;
@@ -161,23 +164,50 @@ export function scoreMock(
         wrong: 0,
         unanswered: 0,
         marks: 0,
+        topics: [],
       };
     subj.total += 1;
+
+    const topicKey = `${q.subjectId}:${q.topicId}`;
+    const topic =
+      topicMap.get(topicKey) ??
+      {
+        topicId: q.topicId,
+        topicName: q.topicName || `Topic ${q.topicId}`,
+        total: 0,
+        correct: 0,
+        wrong: 0,
+        unanswered: 0,
+        marks: 0,
+      };
+    topic.total += 1;
 
     const answer = attempt.answers[id];
     if (answer == null || answer === "") {
       unanswered += 1;
       subj.unanswered += 1;
+      topic.unanswered += 1;
     } else if (answer === q.answer) {
       correct += 1;
       subj.correct += 1;
       subj.marks += attempt.markCorrect;
+      topic.correct += 1;
+      topic.marks += attempt.markCorrect;
     } else {
       wrong += 1;
       subj.wrong += 1;
       subj.marks += attempt.markWrong;
+      topic.wrong += 1;
+      topic.marks += attempt.markWrong;
     }
     subjectMap.set(q.subjectId, subj);
+    topicMap.set(topicKey, topic);
+  }
+
+  // Attach each subject's topics (in first-seen order).
+  for (const [key, topic] of topicMap) {
+    const subjectId = Number(key.split(":")[0]);
+    subjectMap.get(subjectId)?.topics.push(topic);
   }
 
   const marks = correct * attempt.markCorrect + wrong * attempt.markWrong;

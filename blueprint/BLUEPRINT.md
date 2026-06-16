@@ -1040,6 +1040,23 @@ sidebar nav entry. Reuses `rag-service` retrieval and the existing
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-16** — **Detailed mock report + answer review.** New phase
+  `result → review`. **Result page** now shows a timing/mode header (`MockMeta`):
+  the date, start & finish clock times, **time taken**, whether it was done **in
+  one go or paused N×**, and the **mode** (`Past Year · <year>` or
+  `Practice · <level>`). `MockAttempt` gained `submittedAt` + `pauseCount`
+  (incremented on each pause in `MockExam`). A **Detailed report** button opens
+  `MockDetailedReport` — a modal with the timing header, overall tiles, and a
+  **per-subject → per-topic** table of correct/wrong/unanswered/total
+  (`scoreMock` now also returns `MockSubjectScore.topics: MockTopicScore[]`).
+  Its **Check your answers** button enters `MockReview`: a read-only walkthrough
+  where the correct option is green, the student's wrong pick is red, options
+  can't be changed, each question has the same **explanation window** as practice
+  mode (reuses `ExplanationWindow` + `RelatedQuestionWindow`), and the palette is
+  colour-coded **green/red/grey** by correctness (`MockPalette` gained a
+  `mode="review"`). The submitted attempt is kept in memory after submit so
+  result + review use its answers and timing.
+
 - **2026-06-16** — **Mock exam UX: grace timer, keyboard nav, badges, green tick,
   pure difficulty papers.** The countdown now starts after a **10-second grace
   window** on landing ("Starts in Ns"; resumed attempts skip it). **Keyboard

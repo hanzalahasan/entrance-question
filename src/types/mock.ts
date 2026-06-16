@@ -34,9 +34,24 @@ export type MockAttempt = {
   remainingSeconds: number;
   status: "in_progress" | "submitted";
   startedAt: string;
+  // Set when the test is submitted (drives the result's start/end timing).
+  submittedAt?: string;
+  // How many times the student paused — distinguishes "one go" from "paused N×".
+  pauseCount?: number;
   durationMinutes: number;
   markCorrect: number;
   markWrong: number;
+};
+
+// Per-topic breakdown inside a subject (used by the detailed report).
+export type MockTopicScore = {
+  topicId: number;
+  topicName: string;
+  total: number;
+  correct: number;
+  wrong: number;
+  unanswered: number;
+  marks: number;
 };
 
 export type MockSubjectScore = {
@@ -47,6 +62,7 @@ export type MockSubjectScore = {
   wrong: number;
   unanswered: number;
   marks: number;
+  topics: MockTopicScore[];
 };
 
 export type MockResult = {

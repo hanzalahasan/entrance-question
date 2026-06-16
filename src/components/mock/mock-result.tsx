@@ -1,11 +1,18 @@
 "use client";
 
-import type { MockResult } from "@/types/mock";
+import { useState } from "react";
+
+import type { MockAttempt, MockResult } from "@/types/mock";
+import MockMeta from "./mock-meta";
+import MockDetailedReport from "./mock-detailed-report";
 
 type MockResultViewProps = {
   result: MockResult;
+  attempt: MockAttempt;
   onRetake: () => void;
   onExit: () => void;
+  // Open the question-by-question review of this attempt.
+  onReview: () => void;
 };
 
 function fmt(n: number): string {
@@ -14,9 +21,13 @@ function fmt(n: number): string {
 
 export default function MockResultView({
   result,
+  attempt,
   onRetake,
   onExit,
+  onReview,
 }: MockResultViewProps) {
+  const [showDetailed, setShowDetailed] = useState(false);
+
   const pct =
     result.maxMarks > 0
       ? Math.max(0, Math.round((result.marks / result.maxMarks) * 100))
@@ -27,9 +38,14 @@ export default function MockResultView({
       <h1 className="mb-1 text-2xl font-black text-gray-900 dark:text-white">
         Test submitted
       </h1>
-      <p className="mb-6 text-sm font-semibold text-gray-500 dark:text-slate-400">
+      <p className="mb-5 text-sm font-semibold text-gray-500 dark:text-slate-400">
         Negative marking applied ({fmt(result.wrong)} wrong answers).
       </p>
+
+      {/* Timing + mode at the top */}
+      <div className="mb-6">
+        <MockMeta attempt={attempt} />
+      </div>
 
       <div className="mb-6 rounded-2xl bg-blue-50 p-6 text-center dark:bg-slate-700">
         <p className="text-sm font-black uppercase tracking-wide text-blue-700 dark:text-blue-300">
@@ -82,20 +98,40 @@ export default function MockResultView({
         </table>
       </div>
 
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <button
           onClick={onExit}
           className="rounded-2xl border border-gray-300 px-5 py-3 font-bold text-gray-700 transition hover:bg-gray-50 active:scale-95 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700"
         >
           Exit
         </button>
-        <button
-          onClick={onRetake}
-          className="rounded-2xl bg-blue-600 px-8 py-3 font-black text-white transition hover:bg-blue-700 active:scale-95"
-        >
-          Take another
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={() => setShowDetailed(true)}
+            className="rounded-2xl border border-blue-300 bg-blue-50 px-6 py-3 font-black text-blue-700 transition hover:bg-blue-100 active:scale-95 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-300"
+          >
+            Detailed report
+          </button>
+          <button
+            onClick={onRetake}
+            className="rounded-2xl bg-blue-600 px-8 py-3 font-black text-white transition hover:bg-blue-700 active:scale-95"
+          >
+            Take another
+          </button>
+        </div>
       </div>
+
+      {showDetailed && (
+        <MockDetailedReport
+          result={result}
+          attempt={attempt}
+          onCheckAnswers={() => {
+            setShowDetailed(false);
+            onReview();
+          }}
+          onClose={() => setShowDetailed(false)}
+        />
+      )}
     </div>
   );
 }

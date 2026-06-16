@@ -44,6 +44,15 @@ export default function MockExam({
   // Grace period: when a student lands fresh, the countdown only begins after a
   // 10-second prep window. Resumed (paused) attempts skip it.
   const [prepSeconds, setPrepSeconds] = useState(startPaused ? 0 : 10);
+  // Count of pause events (persisted) → the result shows "one go" vs "paused N×".
+  const pauseCountRef = useRef(attempt.pauseCount ?? 0);
+
+  function togglePause() {
+    setPaused((p) => {
+      if (!p) pauseCountRef.current += 1; // entering a pause
+      return !p;
+    });
+  }
 
   const sections = mockSections(questions);
   const current = questions[index];
@@ -80,6 +89,7 @@ export default function MockExam({
       answers,
       remainingSeconds: remaining,
       status: "in_progress",
+      pauseCount: pauseCountRef.current,
       ...overrides,
     };
   }
@@ -207,7 +217,10 @@ export default function MockExam({
   function handleSubmit() {
     if (submittedRef.current) return;
     submittedRef.current = true;
-    const finalAttempt = snapshotRef.current({ status: "submitted" });
+    const finalAttempt = snapshotRef.current({
+      status: "submitted",
+      submittedAt: new Date().toISOString(),
+    });
     saveAttempt(finalAttempt);
     onSubmit(finalAttempt);
   }
@@ -269,7 +282,7 @@ export default function MockExam({
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setPaused((p) => !p)}
+            onClick={togglePause}
             className="rounded-2xl border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 active:scale-95 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700"
           >
             {paused ? "Resume" : "Pause"}

@@ -23,8 +23,9 @@ import MockRules from "@/components/mock/mock-rules";
 import MockSetup from "@/components/mock/mock-setup";
 import MockExam from "@/components/mock/mock-exam";
 import MockResultView from "@/components/mock/mock-result";
+import MockReview from "@/components/mock/mock-review";
 
-type Phase = "loading" | "rules" | "setup" | "exam" | "result";
+type Phase = "loading" | "rules" | "setup" | "exam" | "result" | "review";
 
 export default function MockPage() {
   const router = useRouter();
@@ -104,6 +105,9 @@ export default function MockPage() {
   }
 
   function handleSubmit(finalAttempt: MockAttempt) {
+    // Keep the final attempt in memory so the result + answer review can use the
+    // submitted answers and timing (it's removed from storage so it won't resume).
+    setAttempt(finalAttempt);
     setResult(scoreMock(finalAttempt, examQuestions));
     clearAttempt();
     setPhase("result");
@@ -159,11 +163,21 @@ export default function MockPage() {
         />
       )}
 
-      {phase === "result" && result && (
+      {phase === "result" && result && attempt && (
         <MockResultView
           result={result}
+          attempt={attempt}
           onRetake={() => setPhase("setup")}
           onExit={exitHome}
+          onReview={() => setPhase("review")}
+        />
+      )}
+
+      {phase === "review" && attempt && (
+        <MockReview
+          questions={examQuestions}
+          attempt={attempt}
+          onBack={() => setPhase("result")}
         />
       )}
     </Shell>
