@@ -8,9 +8,29 @@ import type { SubjectMaster, TopicMaster } from "@/types/master";
 import type { Question, DifficultyLevel } from "@/types/question";
 import type {
   GeneratedQuestion,
+  KbGenerateMode,
   KbGenerateRequest,
   KbGenerateResponse,
 } from "@/types/knowledge-base";
+import { isKnowledgeBaseAvailable } from "@/services/knowledge-base-service";
+
+const MODE_OPTIONS: { value: KbGenerateMode; label: string; hint: string }[] = [
+  {
+    value: "hybrid",
+    label: "Book + AI (hybrid)",
+    hint: "Ground in your Knowledge Base, let AI elaborate. Falls back to AI knowledge if no sources match.",
+  },
+  {
+    value: "kb_only",
+    label: "Knowledge Base only",
+    hint: "Strictly from your books. Refuses if no sources match this topic.",
+  },
+  {
+    value: "ai_only",
+    label: "AI only",
+    hint: "Generate purely from the AI's own knowledge. Ignores the Knowledge Base.",
+  },
+];
 
 type ReviewItem = GeneratedQuestion & { keep: boolean };
 
@@ -33,11 +53,16 @@ export default function GenerateQuestionsPanel() {
   const [difficulty, setDifficulty] =
     useState<KbGenerateRequest["difficulty"]>("mixed");
   const [count, setCount] = useState(5);
+  // Default to AI-only when there's no Knowledge Base to ground against.
+  const [mode, setMode] = useState<KbGenerateMode>(
+    isKnowledgeBaseAvailable ? "hybrid" : "ai_only"
+  );
 
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [grounded, setGrounded] = useState<boolean | null>(null);
+  const [usedMode, setUsedMode] = useState<KbGenerateMode>("hybrid");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState("");
 
@@ -78,6 +103,7 @@ export default function GenerateQuestionsPanel() {
         chapter: chapter.trim() || null,
         difficulty,
         count,
+        mode,
       };
       const res = await fetch("/api/admin/kb-generate-questions", {
         method: "POST",
@@ -91,6 +117,7 @@ export default function GenerateQuestionsPanel() {
       }
       setItems(data.questions.map((q) => ({ ...q, keep: true })));
       setGrounded(data.grounded);
+      setUsedMode(mode);
     } catch {
       setError("Network error during generation.");
     } finally {
@@ -207,7 +234,31 @@ export default function GenerateQuestionsPanel() {
               className={inputCls}
             />
           </Field>
+          <Field label="Source">
+            <select
+              value={mode}
+              onChange={(e) => setMode(e.target.value as KbGenerateMode)}
+              className={inputCls}
+            >
+              {MODE_OPTIONS.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </Field>
         </div>
+
+        <p className="mt-3 text-xs font-semibold text-gray-500 dark:text-slate-400">
+          {MODE_OPTIONS.find((m) => m.value === mode)?.hint}
+        </p>
+        {!isKnowledgeBaseAvailable && mode !== "ai_only" && (
+          <p className="mt-2 rounded-xl bg-amber-50 px-4 py-2 text-xs font-bold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+            No Knowledge Base is configured, so book grounding is unavailable —
+            this will behave like AI-only. Set up Supabase + add sources to ground
+            questions in your books.
+          </p>
+        )}
 
         <button
           type="button"
@@ -241,8 +292,10 @@ export default function GenerateQuestionsPanel() {
               </h2>
               <p className="text-xs font-semibold text-gray-500 dark:text-slate-400">
                 {grounded
-                  ? "Grounded in your Knowledge Base sources."
-                  : "⚠ No matching sources found — generated from general knowledge. Review carefully."}
+                  ? "📖 Grounded in your Knowledge Base sources."
+                  : usedMode === "ai_only"
+                    ? "🤖 Generated from the AI's own knowledge (AI-only mode). Review carefully."
+                    : "⚠ No matching sources found — generated from general knowledge. Review carefully."}
               </p>
             </div>
             <button

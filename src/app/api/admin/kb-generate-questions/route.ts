@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
     chapter,
     difficulty = "mixed",
     count,
+    mode = "hybrid",
   } = body;
 
   if (!subjectName || !topicName) {
@@ -50,14 +51,31 @@ export async function POST(request: NextRequest) {
 
   const client = new OpenAI({ apiKey });
 
-  // 1) Retrieve grounding passages for this subject/topic/chapter -------------
-  const query = [subjectName, topicName, chapter, "key concepts and facts"]
-    .filter(Boolean)
-    .join(" — ");
-  const retrieved = await retrieveChunks(client, query, {
-    subjectId: typeof subjectId === "number" ? subjectId : null,
-    matchCount: 10,
-  });
+  // 1) Retrieve grounding passages (skipped entirely in AI-only mode) --------
+  const retrieved =
+    mode === "ai_only"
+      ? []
+      : await retrieveChunks(
+          client,
+          [subjectName, topicName, chapter, "key concepts and facts"]
+            .filter(Boolean)
+            .join(" — "),
+          {
+            subjectId: typeof subjectId === "number" ? subjectId : null,
+            matchCount: 10,
+          }
+        );
+
+  // KB-only mode requires sources — refuse rather than silently use AI knowledge.
+  if (mode === "kb_only" && retrieved.length === 0) {
+    return NextResponse.json(
+      {
+        error:
+          "No Knowledge Base passages matched this topic. Add sources for it, or switch to Hybrid / AI-only mode.",
+      },
+      { status: 422 }
+    );
+  }
 
   const grounded = retrieved.length > 0;
   const citations = retrieved.map((c) => ({

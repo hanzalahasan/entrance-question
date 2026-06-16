@@ -57,6 +57,15 @@ export type KbRetrievedChunk = {
 
 // ── Phase 2: book-grounded question generation ──────────────────────────────
 
+/**
+ * How questions are sourced:
+ * - "hybrid"  — ground in the Knowledge Base + let AI elaborate (falls back to
+ *               AI knowledge when no passages match). The recommended default.
+ * - "kb_only" — strictly from book passages; refuse if none are retrieved.
+ * - "ai_only" — generate purely from the AI's own knowledge, ignore the KB.
+ */
+export type KbGenerateMode = "hybrid" | "kb_only" | "ai_only";
+
 /** What the generate-questions form sends. `difficulty: "mixed"` = a spread. */
 export type KbGenerateRequest = {
   subjectId: number;
@@ -66,6 +75,7 @@ export type KbGenerateRequest = {
   chapter?: string | null;
   difficulty: "easy" | "medium" | "hard" | "mixed";
   count: number;
+  mode: KbGenerateMode;
 };
 
 /** One AI-generated MCQ (raw output, before it becomes a draft Question). */

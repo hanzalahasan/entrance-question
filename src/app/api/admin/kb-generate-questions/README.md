@@ -15,6 +15,7 @@ source citation. Output is **review-only**: the admin UI saves kept questions as
 | `chapter` | Optional — narrows the retrieval query |
 | `difficulty` | `"easy" \| "medium" \| "hard" \| "mixed"` — targeted level, or `mixed` for a spread (each question auto-tagged) |
 | `count` | 1–20 |
+| `mode` | `"hybrid"` (book + AI, falls back to AI) · `"kb_only"` (book passages only, 422 if none) · `"ai_only"` (pure AI knowledge, skips retrieval) |
 
 ## Behaviour
 

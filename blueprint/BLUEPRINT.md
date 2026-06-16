@@ -997,6 +997,11 @@ count**, hits Generate, then **reviews** the result before saving.
   label, and a `sourcesDisagree` flag. If no passages match it still generates
   from exam-standard facts but returns `grounded: false`. Incomplete items and
   bad answers are dropped server-side.
+- **Source modes** (a `mode` field + "Source" selector): **Book + AI (hybrid)** —
+  ground in the KB, AI elaborates, falls back to AI knowledge if nothing matches;
+  **Knowledge Base only** — strictly from passages, refuses (422) if none match;
+  **AI only** — pure model knowledge, skips retrieval entirely (works with no
+  Supabase/sources). Defaults to hybrid when a KB exists, AI-only otherwise.
 - **Difficulty modes** (resolves the plan's open decision as *both*): a **target
   level** (easy/medium/hard) applied to all, or **Mixed** — a spread that the AI
   auto-tags per question. Each question's difficulty is **editable** in the review
@@ -1026,6 +1031,15 @@ sidebar nav entry. Reuses `rag-service` retrieval and the existing
 ## 19. Changelog
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
+
+- **2026-06-16** — **Generate Questions: source mode (Book+AI / KB-only / AI-only).**
+  Added a **Source** selector + `mode` field to `kb-generate-questions`. `hybrid`
+  grounds in the KB and falls back to AI knowledge; `kb_only` is strict (422 when
+  no passages match); `ai_only` skips retrieval and generates purely from the
+  model — so you can generate questions with **no Supabase/sources at all**. The
+  page no longer hard-gates on Supabase; it defaults to hybrid when a KB exists and
+  AI-only otherwise, with a soft notice when grounding is unavailable, and the
+  review banner distinguishes 📖 grounded / 🤖 AI-only / ⚠ fallback.
 
 - **2026-06-16** — **Training Module Phase 2 — book-grounded question generation
   with difficulty.** New admin section **`/admin/generate-questions`** (sidebar

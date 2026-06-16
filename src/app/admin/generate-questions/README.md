@@ -5,6 +5,17 @@ subject → topic → (optional chapter) → difficulty → count; the system re
 Knowledge Base passages and has the AI write MCQs grounded in them. See
 [`blueprint/TRAINING-MODULE-PLAN.md`](../../../../blueprint/TRAINING-MODULE-PLAN.md) §4.2.
 
+## Source modes
+
+A **Source** selector controls where the facts come from:
+
+- **Book + AI (hybrid)** — ground in the Knowledge Base, let AI elaborate; falls
+  back to AI knowledge when no passages match. Default when a KB is configured.
+- **Knowledge Base only** — strictly from book passages; refuses (422) if none
+  match the topic.
+- **AI only** — generate purely from the model's own knowledge, ignoring the KB.
+  Works with **no Supabase / no sources at all**; default when no KB is configured.
+
 ## Flow
 
 1. **Generate** → `POST /api/admin/kb-generate-questions` returns MCQs (each with
