@@ -1018,6 +1018,14 @@ count**, hits Generate, then **reviews** the result before saving.
   Management.
 - **Contradiction handling** (§9): book-grounded questions **never auto-publish**
   — everything lands as a draft, and conflicting ones carry the flag.
+- **Duplicate vetting (two layers).** After generation, each question is checked
+  against the existing bank before it can be saved: (1) **exact / word-by-word** —
+  normalized-text equality across the whole bank, client-side via
+  `duplicate-question-service.findExactTextDuplicates`; (2) **semantic / rephrased**
+  — `POST /api/admin/check-duplicate-questions` embeds the candidates + same-subject
+  bank questions (`text-embedding-3-small`) and flags cosine matches as `near`
+  (≥0.92) or `similar` (≥0.84). Exact + near matches are **auto-unticked** (with a
+  badge + the matched question id/text shown); the admin can re-tick to override.
 
 **New code (Phase 2).** Types `KbGenerateRequest` / `GeneratedQuestion` /
 `KbGenerateResponse` in `types/knowledge-base.ts`; route
@@ -1031,6 +1039,18 @@ sidebar nav entry. Reuses `rag-service` retrieval and the existing
 ## 19. Changelog
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
+
+- **2026-06-16** — **Generated questions: duplicate detection (exact + semantic).**
+  Before AI-generated questions can be saved as drafts they're vetted against the
+  existing bank in two layers. **Exact / word-by-word**: normalized-text equality
+  across the whole bank (new `findExactTextDuplicates` in
+  `duplicate-question-service`, client-side). **Semantic / rephrased**: new **`POST
+  /api/admin/check-duplicate-questions`** embeds the candidates + same-subject bank
+  questions with `text-embedding-3-small` and flags cosine matches as `near`
+  (≥0.92) or `similar` (≥0.84). The review panel shows a ⚠ badge + the matching
+  question id/text/score, auto-unticks exact & near matches (admin can re-tick to
+  override), and the header summarizes how many were flagged. Catches both literal
+  copies and reworded-but-same-meaning questions.
 
 - **2026-06-16** — **Generate Questions: source mode (Book+AI / KB-only / AI-only).**
   Added a **Source** selector + `mode` field to `kb-generate-questions`. `hybrid`

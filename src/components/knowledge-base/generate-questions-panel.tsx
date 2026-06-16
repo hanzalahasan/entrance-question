@@ -3,7 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { getStoredSubjects, getStoredTopics } from "@/services/master-data-store";
-import { saveQuestion } from "@/services/admin-question-store";
+import {
+  getStoredQuestions,
+  saveQuestion,
+} from "@/services/admin-question-store";
+import { findExactTextDuplicates } from "@/services/duplicate-question-service";
 import type { SubjectMaster, TopicMaster } from "@/types/master";
 import type { Question, DifficultyLevel } from "@/types/question";
 import type {
@@ -32,7 +36,12 @@ const MODE_OPTIONS: { value: KbGenerateMode; label: string; hint: string }[] = [
   },
 ];
 
-type ReviewItem = GeneratedQuestion & { keep: boolean };
+type DupMatch = { id: number; question: string; similarity?: number };
+type DupInfo = {
+  level: "exact" | "near" | "similar";
+  matches: DupMatch[];
+};
+type ReviewItem = GeneratedQuestion & { keep: boolean; dup?: DupInfo };
 
 const inputCls =
   "w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-900 dark:border-slate-600 dark:bg-slate-900 dark:text-white";
@@ -63,6 +72,7 @@ export default function GenerateQuestionsPanel() {
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [grounded, setGrounded] = useState<boolean | null>(null);
   const [usedMode, setUsedMode] = useState<KbGenerateMode>("hybrid");
+  const [checkingDups, setCheckingDups] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState("");
 
@@ -115,13 +125,85 @@ export default function GenerateQuestionsPanel() {
         setError(data.error ?? "Generation failed.");
         return;
       }
-      setItems(data.questions.map((q) => ({ ...q, keep: true })));
+      const base: ReviewItem[] = data.questions.map((q) => ({
+        ...q,
+        keep: true,
+      }));
+      setItems(base);
       setGrounded(data.grounded);
       setUsedMode(mode);
+      runDuplicateChecks(base, subject.id);
     } catch {
       setError("Network error during generation.");
     } finally {
       setGenerating(false);
+    }
+  }
+
+  // Two-layer duplicate vetting against the existing bank:
+  //   1. exact (word-by-word, normalized) — whole bank, client-side & free
+  //   2. semantic (rephrased / same meaning) — embeddings, same-subject scope
+  // Exact + "near" matches are auto-deselected; the admin can re-tick to override.
+  async function runDuplicateChecks(base: ReviewItem[], subjId: number) {
+    setCheckingDups(true);
+    try {
+      const existing = await getStoredQuestions();
+
+      // Layer 1 — exact text match across the entire bank.
+      const withExact = base.map((it) => {
+        const exact = findExactTextDuplicates(it.question, existing);
+        if (exact.length === 0) return it;
+        return {
+          ...it,
+          keep: false,
+          dup: {
+            level: "exact" as const,
+            matches: exact
+              .slice(0, 3)
+              .map((e) => ({ id: e.id, question: e.question })),
+          },
+        };
+      });
+      setItems(withExact);
+
+      // Layer 2 — semantic similarity for the items that aren't exact dupes.
+      const candidates = existing
+        .filter((q) => q.subjectId === subjId)
+        .slice(0, 1500)
+        .map((q) => ({ id: q.id, question: q.question }));
+      const toCheck = withExact
+        .map((it, index) => ({ index, question: it.question, dup: it.dup }))
+        .filter((x) => !x.dup)
+        .map(({ index, question }) => ({ index, question }));
+
+      if (candidates.length === 0 || toCheck.length === 0) return;
+
+      const res = await fetch("/api/admin/check-duplicate-questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: toCheck, candidates }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.matches) return;
+
+      setItems((prev) =>
+        prev.map((it, index) => {
+          const hits = data.matches[index] as
+            | (DupMatch & { level: "near" | "similar" })[]
+            | undefined;
+          if (!hits || hits.length === 0 || it.dup) return it;
+          const level = hits[0].level;
+          return {
+            ...it,
+            keep: level === "near" ? false : it.keep,
+            dup: { level, matches: hits },
+          };
+        })
+      );
+    } catch {
+      // Non-fatal: generation still usable without the duplicate annotations.
+    } finally {
+      setCheckingDups(false);
     }
   }
 
@@ -160,6 +242,7 @@ export default function GenerateQuestionsPanel() {
   }
 
   const keepCount = items.filter((it) => it.keep).length;
+  const dupCount = items.filter((it) => it.dup).length;
 
   return (
     <div className="space-y-6">
@@ -297,6 +380,13 @@ export default function GenerateQuestionsPanel() {
                     ? "🤖 Generated from the AI's own knowledge (AI-only mode). Review carefully."
                     : "⚠ No matching sources found — generated from general knowledge. Review carefully."}
               </p>
+              <p className="text-xs font-semibold text-gray-500 dark:text-slate-400">
+                {checkingDups
+                  ? "🔍 Checking for duplicates in the question bank…"
+                  : dupCount > 0
+                    ? `⚠ ${dupCount} possible duplicate${dupCount === 1 ? "" : "s"} flagged — exact & near matches were unticked.`
+                    : "✓ No duplicates found in the question bank."}
+              </p>
             </div>
             <button
               type="button"
@@ -360,6 +450,7 @@ function QuestionReviewCard({
         </label>
 
         <div className="flex shrink-0 items-center gap-2">
+          {item.dup && <DupBadge level={item.dup.level} />}
           {item.sourcesDisagree && (
             <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
               ⚠ Sources disagree
@@ -399,6 +490,32 @@ function QuestionReviewCard({
         })}
       </ul>
 
+      {item.dup && (
+        <div className="mt-3 rounded-2xl bg-red-50 px-4 py-2 dark:bg-red-900/20">
+          <p className="text-xs font-bold text-red-700 dark:text-red-300">
+            {item.dup.level === "exact"
+              ? "Word-for-word duplicate already in the bank:"
+              : item.dup.level === "near"
+                ? "Almost certainly a duplicate (reworded) already in the bank:"
+                : "Possibly a rephrase of an existing question:"}
+          </p>
+          <ul className="mt-1 space-y-0.5">
+            {item.dup.matches.map((m) => (
+              <li
+                key={m.id}
+                className="text-xs font-medium text-red-700 dark:text-red-300"
+              >
+                #{m.id}
+                {typeof m.similarity === "number"
+                  ? ` · ${Math.round(m.similarity * 100)}%`
+                  : ""}{" "}
+                — {m.question}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <details className="mt-3">
         <summary className="cursor-pointer text-xs font-bold text-gray-600 dark:text-slate-300">
           Explanation{item.citation ? ` · 📖 ${item.citation}` : ""}
@@ -413,6 +530,20 @@ function QuestionReviewCard({
         )}
       </details>
     </div>
+  );
+}
+
+function DupBadge({ level }: { level: DupInfo["level"] }) {
+  const map = {
+    exact: { text: "Exact duplicate", cls: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" },
+    near: { text: "Likely duplicate", cls: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" },
+    similar: { text: "Possible rephrase", cls: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300" },
+  } as const;
+  const { text, cls } = map[level];
+  return (
+    <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${cls}`}>
+      ⚠ {text}
+    </span>
   );
 }
 
