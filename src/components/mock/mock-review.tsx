@@ -5,11 +5,9 @@ import { useEffect, useState } from "react";
 import type { Question } from "@/types/question";
 import type { MockAttempt } from "@/types/mock";
 import { mockSections } from "@/services/mock-service";
-import { getRelatedQuestions } from "@/services/related-question-service";
 
 import QuestionOption from "@/components/question/question-option";
 import ExplanationWindow from "@/components/question/explanation-window";
-import RelatedQuestionWindow from "@/components/question/related-question-window";
 import MockPalette from "./mock-palette";
 
 type MockReviewProps = {
@@ -36,7 +34,6 @@ export default function MockReview({
   const [index, setIndex] = useState(0);
   const [showExplanation, setShowExplanation] = useState(false);
   const [explFontSize, setExplFontSize] = useState(16);
-  const [relatedSession, setRelatedSession] = useState<Question[] | null>(null);
 
   const sections = mockSections(questions);
   const current = questions[index];
@@ -49,7 +46,6 @@ export default function MockReview({
   function go(delta: number) {
     setIndex((i) => Math.min(questions.length - 1, Math.max(0, i + delta)));
     setShowExplanation(false);
-    setRelatedSession(null);
   }
 
   // Keyboard: ←/→ or Enter move between questions (read-only, no option change).
@@ -69,8 +65,6 @@ export default function MockReview({
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [questions.length]);
-
-  const relatedQuestions = getRelatedQuestions(current, questions, 10);
 
   function optionStatus(optionKey: string): "default" | "correct" | "wrong" {
     if (optionKey === current.answer) return "correct";
@@ -211,7 +205,6 @@ export default function MockReview({
             onJump={(i) => {
               setIndex(i);
               setShowExplanation(false);
-              setRelatedSession(null);
             }}
             mode="review"
           />
@@ -223,18 +216,12 @@ export default function MockReview({
           question={current}
           fontSize={explFontSize}
           onFontSizeChange={setExplFontSize}
-          relatedQuestions={relatedQuestions}
-          onStartRelated={setRelatedSession}
-          dimmed={Boolean(relatedSession)}
+          // Review mode intentionally has no "Related questions" — passing an
+          // empty list hides that button in the explanation window.
+          relatedQuestions={[]}
+          onStartRelated={() => {}}
+          dimmed={false}
           onClose={() => setShowExplanation(false)}
-        />
-      )}
-
-      {relatedSession && (
-        <RelatedQuestionWindow
-          questions={relatedSession}
-          fontSize={explFontSize}
-          onClose={() => setRelatedSession(null)}
         />
       )}
     </div>
