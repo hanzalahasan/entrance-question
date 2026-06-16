@@ -28,4 +28,12 @@ likely a rephrase). Items with no matches are omitted.
 
 The exact (word-by-word) layer runs client-side via
 `duplicate-question-service.findExactTextDuplicates` — this route only adds the
-semantic layer. See `components/knowledge-base/generate-questions-panel.tsx`.
+semantic layer. The shared client wrapper is
+`services/semantic-duplicate-service.ts` (`checkSemanticDuplicates` +
+`candidatesForSubject`).
+
+## Used by all three question-entry paths
+
+- **Generate Questions** (`generate-questions-panel`) — flags + auto-unticks dupes in the review list.
+- **Add Question** (`/admin/add-question`) — soft warning with "Save anyway" before saving a reworded duplicate.
+- **Excel / PDF Import** (`/admin/import`) — "Check Duplicates" button + auto-skips exact/near dupes on import (shows a per-row badge).

@@ -6,6 +6,11 @@ import AdminLayout from "@/components/admin/admin-layout";
 import { getStoredSubjects, getStoredTopics } from "@/services/master-data-store";
 import { getStoredQuestions, saveQuestions } from "@/services/admin-question-store";
 import { recheckAllDuplicates } from "@/services/recheck-duplicate-service";
+import { findExactTextDuplicates } from "@/services/duplicate-question-service";
+import {
+  candidatesForSubject,
+  checkSemanticDuplicates,
+} from "@/services/semantic-duplicate-service";
 import type { Question } from "@/types/question";
 import type { SubjectMaster as SM, TopicMaster as TM } from "@/types/master";
 
@@ -35,6 +40,11 @@ type ParsedRow = {
   subjectId?: number;
   topicId?: number;
   aiFilled?: string[];
+  // Duplicate vetting against the existing bank (filled by the duplicate check).
+  dup?: {
+    level: "exact" | "near" | "similar";
+    matches: { id: number; question: string; similarity?: number }[];
+  };
 };
 
 // ── Constants ────────────────────────────────────────────────────────
@@ -180,6 +190,7 @@ export default function ExcelImportPage() {
   const [aiFilling, setAiFilling] = useState(false);
   const [aiFillProgress, setAiFillProgress] = useState({ done: 0, total: 0 });
   const [importing, setImporting] = useState(false);
+  const [checkingDups, setCheckingDups] = useState(false);
   const [dragOver, setDragOver] = useState(false);
 
   // Feedback
@@ -415,6 +426,63 @@ export default function ExcelImportPage() {
 
   // ── Import ───────────────────────────────────────────────────────
 
+  // Vet valid rows against the existing bank: exact (word-by-word, whole bank) +
+  // semantic (rephrased, same-subject). Annotates each row's `dup`. Returns the
+  // annotated rows so callers can act on them immediately. Same two layers used
+  // by the question generator and Add Question.
+  async function annotateDuplicates(current: ParsedRow[]): Promise<ParsedRow[]> {
+    const existing = await getStoredQuestions();
+
+    // Layer 1 — exact text across the whole bank.
+    let annotated: ParsedRow[] = current.map((r) => {
+      if (r.status !== "valid") return { ...r, dup: undefined };
+      const exact = findExactTextDuplicates(r.question, existing);
+      if (exact.length === 0) return { ...r, dup: undefined };
+      return {
+        ...r,
+        dup: {
+          level: "exact" as const,
+          matches: exact.slice(0, 3).map((e) => ({ id: e.id, question: e.question })),
+        },
+      };
+    });
+
+    // Layer 2 — semantic, grouped by subject (rows that aren't exact dupes).
+    const bySubject = new Map<number, { index: number; question: string }[]>();
+    annotated.forEach((r, index) => {
+      if (r.status !== "valid" || r.dup || !r.subjectId) return;
+      const list = bySubject.get(r.subjectId) ?? [];
+      list.push({ index, question: r.question });
+      bySubject.set(r.subjectId, list);
+    });
+
+    for (const [subjectId, items] of bySubject) {
+      const matches = await checkSemanticDuplicates(
+        items,
+        candidatesForSubject(existing, subjectId)
+      );
+      annotated = annotated.map((r, index) => {
+        const hits = matches[index];
+        if (!hits || hits.length === 0 || r.dup) return r;
+        return { ...r, dup: { level: hits[0].level, matches: hits } };
+      });
+    }
+
+    return annotated;
+  }
+
+  async function handleCheckDuplicates() {
+    setCheckingDups(true);
+    setError("");
+    try {
+      setRows(await annotateDuplicates(rows));
+    } catch {
+      setError("Duplicate check failed. You can still import.");
+    } finally {
+      setCheckingDups(false);
+    }
+  }
+
   async function handleImport() {
     const validRows = rows.filter((r) => r.status === "valid");
     if (!validRows.length) return;
@@ -423,11 +491,44 @@ export default function ExcelImportPage() {
     setError("");
 
     try {
+      // Always vet before saving so duplicates can't slip in unchecked. Exact +
+      // near matches are skipped automatically; "similar" (rephrase) rows still
+      // import (probabilistic — surfaced as a badge for the reviewer instead).
+      const annotated = await annotateDuplicates(rows);
+      setRows(annotated);
+
+      const toImport = annotated.filter(
+        (r) =>
+          r.status === "valid" &&
+          r.dup?.level !== "exact" &&
+          r.dup?.level !== "near"
+      );
+      const skippedDups = annotated.filter(
+        (r) =>
+          r.status === "valid" &&
+          (r.dup?.level === "exact" || r.dup?.level === "near")
+      ).length;
+
+      if (toImport.length === 0) {
+        setError(
+          `All ${validRows.length} valid row(s) are duplicates of existing questions — nothing imported.`
+        );
+        return;
+      }
+
       const existing = await getStoredQuestions();
-      const newQuestions = validRows.map(rowToQuestion);
+      const newQuestions = toImport.map(rowToQuestion);
       await saveQuestions(recheckAllDuplicates([...newQuestions, ...existing]));
-      setResult({ imported: validRows.length, skipped: rows.length - validRows.length });
+      setResult({
+        imported: toImport.length,
+        skipped: rows.length - toImport.length,
+      });
       setRows([]);
+      if (skippedDups > 0) {
+        setError(
+          `Skipped ${skippedDups} duplicate row(s) already in the bank. Imported ${toImport.length}.`
+        );
+      }
     } catch {
       setError("Import failed. Please try again.");
     } finally {
@@ -440,6 +541,7 @@ export default function ExcelImportPage() {
   const validCount    = rows.filter((r) => r.status === "valid").length;
   const errorCount    = rows.filter((r) => r.status === "error").length;
   const needFillCount = rows.filter((r) => r.question && needsAIFill(r)).length;
+  const dupCount      = rows.filter((r) => r.dup).length;
 
   const acceptAttr = sourceType === "excel"
     ? ".xlsx,.xls,.csv"
@@ -624,10 +726,21 @@ export default function ExcelImportPage() {
                   <span className="text-green-600">{validCount} valid</span>
                   {errorCount > 0 && <span className="ml-2 text-red-600">{errorCount} errors</span>}
                   {needFillCount > 0 && <span className="ml-2 text-purple-600">{needFillCount} need AI fill</span>}
+                  {dupCount > 0 && <span className="ml-2 text-amber-600">{dupCount} possible duplicate{dupCount === 1 ? "" : "s"}</span>}
                 </p>
               </div>
 
               <div className="flex flex-wrap gap-2">
+                {validCount > 0 && (
+                  <button
+                    onClick={handleCheckDuplicates}
+                    disabled={checkingDups || importing}
+                    className="rounded-2xl bg-amber-500 px-5 py-3 font-black text-white disabled:opacity-60 transition hover:bg-amber-600"
+                  >
+                    {checkingDups ? "🔍 Checking..." : "🔍 Check Duplicates"}
+                  </button>
+                )}
+
                 {needFillCount > 0 && (
                   <button
                     onClick={handleAIFill}
@@ -725,6 +838,34 @@ export default function ExcelImportPage() {
                             <ul className="mt-1 space-y-0.5">
                               {row.errors.map((e, i) => (
                                 <li key={i} className="text-xs text-red-600">• {e}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {row.dup && (
+                          <div className="mt-1">
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs font-black ${
+                                row.dup.level === "similar"
+                                  ? "bg-amber-100 text-amber-700"
+                                  : "bg-red-100 text-red-700"
+                              }`}
+                            >
+                              {row.dup.level === "exact"
+                                ? "⚠ Exact duplicate — skipped"
+                                : row.dup.level === "near"
+                                  ? "⚠ Likely duplicate — skipped"
+                                  : "⚠ Possible rephrase"}
+                            </span>
+                            <ul className="mt-1 space-y-0.5">
+                              {row.dup.matches.map((m) => (
+                                <li key={m.id} className="text-xs text-amber-600">
+                                  #{m.id}
+                                  {typeof m.similarity === "number"
+                                    ? ` · ${Math.round(m.similarity * 100)}%`
+                                    : ""}
+                                </li>
                               ))}
                             </ul>
                           </div>

@@ -8,6 +8,10 @@ import {
   saveQuestion,
 } from "@/services/admin-question-store";
 import { findExactTextDuplicates } from "@/services/duplicate-question-service";
+import {
+  candidatesForSubject,
+  checkSemanticDuplicates,
+} from "@/services/semantic-duplicate-service";
 import type { SubjectMaster, TopicMaster } from "@/types/master";
 import type { Question, DifficultyLevel } from "@/types/question";
 import type {
@@ -167,30 +171,18 @@ export default function GenerateQuestionsPanel() {
       setItems(withExact);
 
       // Layer 2 — semantic similarity for the items that aren't exact dupes.
-      const candidates = existing
-        .filter((q) => q.subjectId === subjId)
-        .slice(0, 1500)
-        .map((q) => ({ id: q.id, question: q.question }));
+      const candidates = candidatesForSubject(existing, subjId);
       const toCheck = withExact
         .map((it, index) => ({ index, question: it.question, dup: it.dup }))
         .filter((x) => !x.dup)
         .map(({ index, question }) => ({ index, question }));
 
-      if (candidates.length === 0 || toCheck.length === 0) return;
-
-      const res = await fetch("/api/admin/check-duplicate-questions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: toCheck, candidates }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.matches) return;
+      const matches = await checkSemanticDuplicates(toCheck, candidates);
+      if (Object.keys(matches).length === 0) return;
 
       setItems((prev) =>
         prev.map((it, index) => {
-          const hits = data.matches[index] as
-            | (DupMatch & { level: "near" | "similar" })[]
-            | undefined;
+          const hits = matches[index];
           if (!hits || hits.length === 0 || it.dup) return it;
           const level = hits[0].level;
           return {

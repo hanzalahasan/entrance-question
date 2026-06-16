@@ -13,6 +13,11 @@ import {
   findRepeatedYearQuestions,
 } from "@/services/duplicate-question-service";
 import { recheckAllDuplicates } from "@/services/recheck-duplicate-service";
+import {
+  candidatesForSubject,
+  checkSemanticDuplicates,
+  type SemanticDupMatch,
+} from "@/services/semantic-duplicate-service";
 import { validateQuestion } from "@/lib/question-validation";
 import type { Question } from "@/types/question";
 
@@ -56,8 +61,13 @@ export default function AddQuestionPage() {
   const [questionData, setQuestionData] = useState<Question>(createEmptyQuestion());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // Semantic "rephrase" matches awaiting the admin's confirm-to-save decision.
+  const [dupWarning, setDupWarning] = useState<{
+    status: Question["status"];
+    matches: SemanticDupMatch[];
+  } | null>(null);
 
-  async function saveAs(status: Question["status"]) {
+  async function saveAs(status: Question["status"], force = false) {
     const validationError = validateQuestion(questionData);
     if (validationError) { setError(validationError); return; }
 
@@ -78,6 +88,21 @@ export default function AddQuestionPage() {
         setError("This exact question already exists for the same subject, topic, and year.");
         return;
       }
+
+      // Semantic (rephrased / same-meaning) check — a soft warning the admin can
+      // override, since it's similarity-based, not an exact match.
+      if (!force) {
+        const matchesMap = await checkSemanticDuplicates(
+          [{ index: 0, question: questionData.question }],
+          candidatesForSubject(existing, questionData.subjectId)
+        );
+        const matches = matchesMap[0];
+        if (matches && matches.length > 0) {
+          setDupWarning({ status, matches });
+          return;
+        }
+      }
+      setDupWarning(null);
 
       const repeatedYears = [
         ...new Set([
@@ -119,6 +144,40 @@ export default function AddQuestionPage() {
         <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">
           {error}
           <button onClick={() => setError("")} className="ml-3 underline">Dismiss</button>
+        </div>
+      )}
+
+      {dupWarning && (
+        <div className="mb-5 rounded-2xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
+          <p className="text-sm font-black text-amber-800 dark:text-amber-200">
+            ⚠ This looks like a reworded version of {dupWarning.matches.length}{" "}
+            existing question{dupWarning.matches.length === 1 ? "" : "s"}:
+          </p>
+          <ul className="mt-2 space-y-1">
+            {dupWarning.matches.map((m) => (
+              <li
+                key={m.id}
+                className="text-xs font-semibold text-amber-700 dark:text-amber-300"
+              >
+                #{m.id} · {Math.round(m.similarity * 100)}% — {m.question}
+              </li>
+            ))}
+          </ul>
+          <div className="mt-3 flex gap-2">
+            <button
+              onClick={() => saveAs(dupWarning.status, true)}
+              disabled={saving}
+              className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-amber-700 disabled:opacity-50"
+            >
+              Save anyway
+            </button>
+            <button
+              onClick={() => setDupWarning(null)}
+              className="rounded-xl border border-amber-300 px-4 py-2 text-sm font-bold text-amber-700 transition hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 

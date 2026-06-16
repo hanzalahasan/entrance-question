@@ -1040,6 +1040,19 @@ sidebar nav entry. Reuses `rag-service` retrieval and the existing
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-16** — **Duplicate detection extended to Add Question + Excel/PDF Import.**
+  The exact + semantic dedup built for the generator now guards every entry path,
+  via a shared client wrapper `services/semantic-duplicate-service.ts`
+  (`checkSemanticDuplicates` + `candidatesForSubject`). **Add Question**: after the
+  existing exact/classification blocks, a semantic check shows an amber "looks like
+  a reworded version of …" warning (with ids + scores) and a **Save anyway** /
+  Cancel choice before saving. **Import**: a **🔍 Check Duplicates** button
+  annotates rows (exact whole-bank + semantic per-subject), the summary shows a
+  "N possible duplicates" count, each row gets a badge, and `handleImport` always
+  re-vets and **auto-skips exact & near duplicates** (reporting how many), while
+  "similar/rephrase" rows still import flagged. The generator panel was refactored
+  onto the same shared helper.
+
 - **2026-06-16** — **Generated questions: duplicate detection (exact + semantic).**
   Before AI-generated questions can be saved as drafts they're vetted against the
   existing bank in two layers. **Exact / word-by-word**: normalized-text equality
