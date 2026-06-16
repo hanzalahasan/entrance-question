@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 
-import { getStoredSubjects, getStoredTopics } from "@/services/master-data-store";
 import {
   getStoredQuestions,
   saveQuestion,
@@ -12,43 +11,32 @@ import {
   candidatesForSubject,
   checkSemanticDuplicates,
 } from "@/services/semantic-duplicate-service";
-import type { SubjectMaster, TopicMaster } from "@/types/master";
 import type { Question, DifficultyLevel } from "@/types/question";
 import type {
   GeneratedQuestion,
   KbGenerateMode,
   KbGenerateRequest,
+  KbGenerationPlanItem,
   KbGenerateResponse,
 } from "@/types/knowledge-base";
-import { isKnowledgeBaseAvailable } from "@/services/knowledge-base-service";
 
-const MODE_OPTIONS: { value: KbGenerateMode; label: string; hint: string }[] = [
-  {
-    value: "hybrid",
-    label: "Book + AI (hybrid)",
-    hint: "Ground in your Knowledge Base, let AI elaborate. Falls back to AI knowledge if no sources match.",
-  },
-  {
-    value: "kb_only",
-    label: "Knowledge Base only",
-    hint: "Strictly from your books. Refuses if no sources match this topic.",
-  },
-  {
-    value: "ai_only",
-    label: "AI only",
-    hint: "Generate purely from the AI's own knowledge. Ignores the Knowledge Base.",
-  },
-];
+type Difficulty = KbGenerateRequest["difficulty"];
 
+import GenerationPlanForm from "./generation-plan-form";
+
+// A generated question carries the subject/topic it was generated for (the plan
+// supports many at once) plus review state and any duplicate match.
 type DupMatch = { id: number; question: string; similarity?: number };
-type DupInfo = {
-  level: "exact" | "near" | "similar";
-  matches: DupMatch[];
+type DupInfo = { level: "exact" | "near" | "similar"; matches: DupMatch[] };
+type ReviewItem = GeneratedQuestion & {
+  keep: boolean;
+  dup?: DupInfo;
+  subjectId: number;
+  subjectName: string;
+  topicId: number;
+  topicName: string;
+  grounded: boolean;
 };
-type ReviewItem = GeneratedQuestion & { keep: boolean; dup?: DupInfo };
-
-const inputCls =
-  "w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-900 dark:border-slate-600 dark:bg-slate-900 dark:text-white";
 
 const DIFF_STYLE: Record<DifficultyLevel, string> = {
   easy: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
@@ -57,103 +45,84 @@ const DIFF_STYLE: Record<DifficultyLevel, string> = {
 };
 
 export default function GenerateQuestionsPanel() {
-  const [subjects, setSubjects] = useState<SubjectMaster[]>([]);
-  const [topics, setTopics] = useState<TopicMaster[]>([]);
-
-  const [subjectId, setSubjectId] = useState<number | "">("");
-  const [topicId, setTopicId] = useState<number | "">("");
-  const [chapter, setChapter] = useState("");
-  const [difficulty, setDifficulty] =
-    useState<KbGenerateRequest["difficulty"]>("mixed");
-  const [count, setCount] = useState(5);
-  // Default to AI-only when there's no Knowledge Base to ground against.
-  const [mode, setMode] = useState<KbGenerateMode>(
-    isKnowledgeBaseAvailable ? "hybrid" : "ai_only"
-  );
-
-  const [generating, setGenerating] = useState(false);
-  const [error, setError] = useState("");
   const [items, setItems] = useState<ReviewItem[]>([]);
-  const [grounded, setGrounded] = useState<boolean | null>(null);
-  const [usedMode, setUsedMode] = useState<KbGenerateMode>("hybrid");
+  const [generating, setGenerating] = useState(false);
+  const [progress, setProgress] = useState("");
   const [checkingDups, setCheckingDups] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const [saved, setSaved] = useState("");
 
-  useEffect(() => {
-    getStoredSubjects().then((s) =>
-      setSubjects(s.filter((x) => x.status === "active"))
-    );
-    getStoredTopics().then(setTopics);
-  }, []);
-
-  const activeTopics = useMemo(
-    () =>
-      topics.filter(
-        (t) => t.subjectId === subjectId && t.status === "active"
-      ),
-    [topics, subjectId]
-  );
-
-  async function handleGenerate() {
+  async function handleGenerate(
+    plan: KbGenerationPlanItem[],
+    difficulty: Difficulty,
+    mode: KbGenerateMode
+  ) {
+    setGenerating(true);
     setError("");
     setSaved("");
-    if (subjectId === "") return setError("Pick a subject.");
-    if (topicId === "") return setError("Pick a topic.");
-
-    const subject = subjects.find((s) => s.id === subjectId);
-    const topic = topics.find((t) => t.id === topicId);
-    if (!subject || !topic) return setError("Invalid subject/topic.");
-
-    setGenerating(true);
     setItems([]);
-    setGrounded(null);
+
+    const collected: ReviewItem[] = [];
     try {
-      const payload: KbGenerateRequest = {
-        subjectId: subject.id,
-        subjectName: subject.name,
-        topicId: topic.id,
-        topicName: topic.name,
-        chapter: chapter.trim() || null,
-        difficulty,
-        count,
-        mode,
-      };
-      const res = await fetch("/api/admin/kb-generate-questions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data: KbGenerateResponse & { error?: string } = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Generation failed.");
+      let done = 0;
+      for (const line of plan) {
+        done += 1;
+        setProgress(`Generating ${line.subjectName} → ${line.topicName} (${done}/${plan.length})…`);
+        try {
+          const res = await fetch("/api/admin/kb-generate-questions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              subjectId: line.subjectId,
+              subjectName: line.subjectName,
+              topicId: line.topicId,
+              topicName: line.topicName,
+              difficulty,
+              count: line.count,
+              mode,
+            }),
+          });
+          const data: KbGenerateResponse & { error?: string } = await res.json();
+          if (!res.ok || !data.questions) continue; // skip this topic, keep going
+          collected.push(
+            ...data.questions.map((q) => ({
+              ...q,
+              keep: true,
+              subjectId: line.subjectId,
+              subjectName: line.subjectName,
+              topicId: line.topicId,
+              topicName: line.topicName,
+              grounded: data.grounded,
+            }))
+          );
+        } catch {
+          // network hiccup on one topic — continue with the rest
+        }
+      }
+
+      if (collected.length === 0) {
+        setError(
+          "No questions were generated. For Knowledge-Base-only mode, make sure the selected topics have sources."
+        );
         return;
       }
-      const base: ReviewItem[] = data.questions.map((q) => ({
-        ...q,
-        keep: true,
-      }));
-      setItems(base);
-      setGrounded(data.grounded);
-      setUsedMode(mode);
-      runDuplicateChecks(base, subject.id);
-    } catch {
-      setError("Network error during generation.");
+      setItems(collected);
+      runDuplicateChecks(collected);
     } finally {
       setGenerating(false);
+      setProgress("");
     }
   }
 
-  // Two-layer duplicate vetting against the existing bank:
-  //   1. exact (word-by-word, normalized) — whole bank, client-side & free
-  //   2. semantic (rephrased / same meaning) — embeddings, same-subject scope
-  // Exact + "near" matches are auto-deselected; the admin can re-tick to override.
-  async function runDuplicateChecks(base: ReviewItem[], subjId: number) {
+  // Two-layer duplicate vetting against the existing bank (exact word-by-word +
+  // semantic per subject). Exact + near matches are auto-unticked.
+  async function runDuplicateChecks(base: ReviewItem[]) {
     setCheckingDups(true);
     try {
       const existing = await getStoredQuestions();
 
-      // Layer 1 — exact text match across the entire bank.
+      // Layer 1 — exact text across the whole bank.
       const withExact = base.map((it) => {
         const exact = findExactTextDuplicates(it.question, existing);
         if (exact.length === 0) return it;
@@ -162,26 +131,29 @@ export default function GenerateQuestionsPanel() {
           keep: false,
           dup: {
             level: "exact" as const,
-            matches: exact
-              .slice(0, 3)
-              .map((e) => ({ id: e.id, question: e.question })),
+            matches: exact.slice(0, 3).map((e) => ({ id: e.id, question: e.question })),
           },
         };
       });
       setItems(withExact);
 
-      // Layer 2 — semantic similarity for the items that aren't exact dupes.
-      const candidates = candidatesForSubject(existing, subjId);
-      const toCheck = withExact
-        .map((it, index) => ({ index, question: it.question, dup: it.dup }))
-        .filter((x) => !x.dup)
-        .map(({ index, question }) => ({ index, question }));
+      // Layer 2 — semantic, grouped by subject (items without an exact dup).
+      const bySubject = new Map<number, { index: number; question: string }[]>();
+      withExact.forEach((it, index) => {
+        if (it.dup) return;
+        const list = bySubject.get(it.subjectId) ?? [];
+        list.push({ index, question: it.question });
+        bySubject.set(it.subjectId, list);
+      });
 
-      const matches = await checkSemanticDuplicates(toCheck, candidates);
-      if (Object.keys(matches).length === 0) return;
-
-      setItems((prev) =>
-        prev.map((it, index) => {
+      let next = withExact;
+      for (const [subjectId, group] of bySubject) {
+        const matches = await checkSemanticDuplicates(
+          group,
+          candidatesForSubject(existing, subjectId)
+        );
+        if (Object.keys(matches).length === 0) continue;
+        next = next.map((it, index) => {
           const hits = matches[index];
           if (!hits || hits.length === 0 || it.dup) return it;
           const level = hits[0].level;
@@ -190,8 +162,9 @@ export default function GenerateQuestionsPanel() {
             keep: level === "near" ? false : it.keep,
             dup: { level, matches: hits },
           };
-        })
-      );
+        });
+      }
+      setItems(next);
     } catch {
       // Non-fatal: generation still usable without the duplicate annotations.
     } finally {
@@ -200,32 +173,27 @@ export default function GenerateQuestionsPanel() {
   }
 
   function patchItem(index: number, patch: Partial<ReviewItem>) {
-    setItems((prev) =>
-      prev.map((it, i) => (i === index ? { ...it, ...patch } : it))
-    );
+    setItems((prev) => prev.map((it, i) => (i === index ? { ...it, ...patch } : it)));
   }
 
   async function handleSaveDrafts() {
-    const subject = subjects.find((s) => s.id === subjectId);
-    const topic = topics.find((t) => t.id === topicId);
-    if (!subject || !topic) return;
-
     const kept = items.filter((it) => it.keep);
-    if (kept.length === 0) return setError("Nothing selected to save.");
-
+    if (kept.length === 0) {
+      setError("Nothing selected to save.");
+      return;
+    }
     setSaving(true);
     setError("");
     try {
       let i = 0;
       for (const it of kept) {
-        await saveQuestion(toDraftQuestion(it, subject, topic, i));
+        await saveQuestion(toDraftQuestion(it, i));
         i += 1;
       }
       setSaved(
         `Saved ${kept.length} question${kept.length === 1 ? "" : "s"} as drafts. Review and publish them in Question Management.`
       );
       setItems([]);
-      setGrounded(null);
     } catch {
       setError("Could not save the drafts. Try again.");
     } finally {
@@ -235,128 +203,28 @@ export default function GenerateQuestionsPanel() {
 
   const keepCount = items.filter((it) => it.keep).length;
   const dupCount = items.filter((it) => it.dup).length;
+  const groundedCount = items.filter((it) => it.grounded).length;
 
   return (
     <div className="space-y-6">
-      {/* ── Generation form ─────────────────────────────────────────────── */}
-      <div className="rounded-3xl border border-gray-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Subject">
-            <select
-              value={subjectId}
-              onChange={(e) => {
-                setSubjectId(e.target.value === "" ? "" : Number(e.target.value));
-                setTopicId("");
-              }}
-              className={inputCls}
-            >
-              <option value="">— Select —</option>
-              {subjects.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Topic / chapter">
-            <select
-              value={topicId}
-              onChange={(e) =>
-                setTopicId(e.target.value === "" ? "" : Number(e.target.value))
-              }
-              className={inputCls}
-              disabled={subjectId === ""}
-            >
-              <option value="">— Select —</option>
-              {activeTopics.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Chapter hint (optional)">
-            <input
-              value={chapter}
-              onChange={(e) => setChapter(e.target.value)}
-              placeholder="e.g. Laws of Motion"
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Difficulty">
-            <select
-              value={difficulty}
-              onChange={(e) =>
-                setDifficulty(e.target.value as KbGenerateRequest["difficulty"])
-              }
-              className={inputCls}
-            >
-              <option value="mixed">Mixed (a spread, auto-tagged)</option>
-              <option value="easy">Easy</option>
-              <option value="medium">Medium</option>
-              <option value="hard">Hard</option>
-            </select>
-          </Field>
-          <Field label="How many">
-            <input
-              type="number"
-              min={1}
-              max={20}
-              value={count}
-              onChange={(e) =>
-                setCount(Math.max(1, Math.min(20, Number(e.target.value) || 1)))
-              }
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Source">
-            <select
-              value={mode}
-              onChange={(e) => setMode(e.target.value as KbGenerateMode)}
-              className={inputCls}
-            >
-              {MODE_OPTIONS.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
+      <GenerationPlanForm busy={generating} onGenerate={handleGenerate} />
 
-        <p className="mt-3 text-xs font-semibold text-gray-500 dark:text-slate-400">
-          {MODE_OPTIONS.find((m) => m.value === mode)?.hint}
+      {generating && progress && (
+        <p className="rounded-2xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">
+          {progress}
         </p>
-        {!isKnowledgeBaseAvailable && mode !== "ai_only" && (
-          <p className="mt-2 rounded-xl bg-amber-50 px-4 py-2 text-xs font-bold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
-            No Knowledge Base is configured, so book grounding is unavailable —
-            this will behave like AI-only. Set up Supabase + add sources to ground
-            questions in your books.
-          </p>
-        )}
+      )}
+      {error && (
+        <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700 dark:bg-red-900/30 dark:text-red-300">
+          {error}
+        </p>
+      )}
+      {saved && (
+        <p className="rounded-2xl bg-green-50 px-4 py-3 text-sm font-bold text-green-700 dark:bg-green-900/30 dark:text-green-300">
+          {saved}
+        </p>
+      )}
 
-        <button
-          type="button"
-          onClick={handleGenerate}
-          disabled={generating}
-          className="mt-5 rounded-2xl bg-blue-600 px-6 py-3 font-bold text-white transition hover:bg-blue-700 disabled:opacity-50"
-        >
-          {generating ? "Generating…" : "✨ Generate questions"}
-        </button>
-
-        {error && (
-          <p className="mt-4 rounded-xl bg-red-50 px-4 py-2 text-sm font-bold text-red-700 dark:bg-red-900/30 dark:text-red-300">
-            {error}
-          </p>
-        )}
-        {saved && (
-          <p className="mt-4 rounded-xl bg-green-50 px-4 py-2 text-sm font-bold text-green-700 dark:bg-green-900/30 dark:text-green-300">
-            {saved}
-          </p>
-        )}
-      </div>
-
-      {/* ── Review list ─────────────────────────────────────────────────── */}
       {items.length > 0 && (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -366,11 +234,7 @@ export default function GenerateQuestionsPanel() {
                 {items.length === 1 ? "" : "s"}
               </h2>
               <p className="text-xs font-semibold text-gray-500 dark:text-slate-400">
-                {grounded
-                  ? "📖 Grounded in your Knowledge Base sources."
-                  : usedMode === "ai_only"
-                    ? "🤖 Generated from the AI's own knowledge (AI-only mode). Review carefully."
-                    : "⚠ No matching sources found — generated from general knowledge. Review carefully."}
+                📖 {groundedCount} grounded in sources · 🤖 {items.length - groundedCount} from general knowledge
               </p>
               <p className="text-xs font-semibold text-gray-500 dark:text-slate-400">
                 {checkingDups
@@ -391,12 +255,7 @@ export default function GenerateQuestionsPanel() {
           </div>
 
           {items.map((it, i) => (
-            <QuestionReviewCard
-              key={i}
-              item={it}
-              index={i}
-              onPatch={patchItem}
-            />
+            <QuestionReviewCard key={i} item={it} index={i} onPatch={patchItem} />
           ))}
         </div>
       )}
@@ -436,8 +295,13 @@ function QuestionReviewCard({
             onChange={(e) => onPatch(index, { keep: e.target.checked })}
             className="mt-1 h-4 w-4"
           />
-          <span className="font-bold text-gray-900 dark:text-white">
-            {index + 1}. {item.question}
+          <span>
+            <span className="mb-0.5 block text-xs font-bold uppercase tracking-wide text-blue-600 dark:text-blue-400">
+              {item.subjectName} → {item.topicName}
+            </span>
+            <span className="font-bold text-gray-900 dark:text-white">
+              {index + 1}. {item.question}
+            </span>
           </span>
         </label>
 
@@ -451,9 +315,7 @@ function QuestionReviewCard({
           <select
             value={item.difficulty}
             onChange={(e) =>
-              onPatch(index, {
-                difficulty: e.target.value as DifficultyLevel,
-              })
+              onPatch(index, { difficulty: e.target.value as DifficultyLevel })
             }
             className={`rounded-full px-2.5 py-1 text-xs font-bold ${DIFF_STYLE[item.difficulty]}`}
           >
@@ -539,33 +401,10 @@ function DupBadge({ level }: { level: DupInfo["level"] }) {
   );
 }
 
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-slate-400">
-        {label}
-      </span>
-      {children}
-    </label>
-  );
-}
-
 // Turn a reviewed generated question into a draft Question (mirrors the import
-// flow's rowToQuestion). Always status "draft" — book-grounded questions never
-// auto-publish (TRAINING-MODULE-PLAN §9). Citation + conflict flag are recorded
-// in aiTags so reviewers see them in Question Management.
-function toDraftQuestion(
-  it: ReviewItem,
-  subject: SubjectMaster,
-  topic: TopicMaster,
-  offset: number
-): Question {
+// flow's rowToQuestion). Always status "draft" — generated questions never
+// auto-publish (TRAINING-MODULE-PLAN §9). Citation + conflict flag ride in aiTags.
+function toDraftQuestion(it: ReviewItem, offset: number): Question {
   const now = new Date().toISOString();
   const aiTags: string[] = [];
   if (it.citation) aiTags.push(`source: ${it.citation}`);
@@ -585,10 +424,10 @@ function toDraftQuestion(
     explanation: it.explanation,
     explanationLong: it.longExplanation,
     concepts: it.concepts,
-    subjectId: subject.id,
-    topicId: topic.id,
-    subjectName: subject.name,
-    topicName: topic.name,
+    subjectId: it.subjectId,
+    topicId: it.topicId,
+    subjectName: it.subjectName,
+    topicName: it.topicName,
     year: "",
     repeatedYears: [],
     repeatCount: 1,

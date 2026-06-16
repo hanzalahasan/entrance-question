@@ -66,6 +66,19 @@ export type KbRetrievedChunk = {
  */
 export type KbGenerateMode = "hybrid" | "kb_only" | "ai_only";
 
+/**
+ * One line of a generation plan: "generate `count` questions for this
+ * subject→topic". The form builds a list of these so the admin can request a
+ * different amount for each selected topic across multiple subjects.
+ */
+export type KbGenerationPlanItem = {
+  subjectId: number;
+  subjectName: string;
+  topicId: number;
+  topicName: string;
+  count: number;
+};
+
 /** What the generate-questions form sends. `difficulty: "mixed"` = a spread. */
 export type KbGenerateRequest = {
   subjectId: number;

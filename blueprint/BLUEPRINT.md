@@ -1040,6 +1040,20 @@ sidebar nav entry. Reuses `rag-service` retrieval and the existing
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-16** — **Master Settings redesign + multi-subject/topic generation.**
+  **Master Settings** (`/admin/settings`) is now one unified **accordion**: add
+  subjects at the top, and each subject expands to show, add, and toggle its own
+  topics (replaces the two-separate-cards layout). Extracted to
+  `components/admin/master/subjects-topics-manager.tsx`; the page is now thin.
+  **Generate Questions** moved from single subject+topic to a **multi-select
+  plan**: pick several subjects (chips) → their topics appear filtered to the
+  selection → tick topics and set a **per-topic "how many" count** → one
+  difficulty + source mode for the batch. New `KbGenerationPlanItem` type + split
+  `generation-plan-form.tsx` (selection → plan) and a rewritten
+  `generate-questions-panel.tsx` that runs the plan **topic-by-topic with
+  progress**, tags each result with its subject/topic, then aggregates into the
+  shared review → dedup → save-drafts flow (each card shows its subject→topic).
+
 - **2026-06-16** — **Duplicate detection extended to Add Question + Excel/PDF Import.**
   The exact + semantic dedup built for the generator now guards every entry path,
   via a shared client wrapper `services/semantic-duplicate-service.ts`

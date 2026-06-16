@@ -1,9 +1,15 @@
 # `/admin/generate-questions` — book-grounded question generation (Phase 2)
 
-Admin page for the Training Module's **question generation**. Admin picks
-subject → topic → (optional chapter) → difficulty → count; the system retrieves
-Knowledge Base passages and has the AI write MCQs grounded in them. See
+Admin page for the Training Module's **question generation**. The admin selects
+**multiple subjects → their topics (filtered to the chosen subjects) → a "how
+many" count per topic** → difficulty → source mode; the system retrieves
+Knowledge Base passages per topic and has the AI write MCQs grounded in them. See
 [`blueprint/TRAINING-MODULE-PLAN.md`](../../../../blueprint/TRAINING-MODULE-PLAN.md) §4.2.
+
+UI is split: `generation-plan-form.tsx` (the multi-select selection → emits a
+generation plan: one line per topic with its count) and
+`generate-questions-panel.tsx` (runs the plan topic-by-topic, then review →
+dedup → save drafts).
 
 ## Source modes
 
@@ -18,9 +24,13 @@ A **Source** selector controls where the facts come from:
 
 ## Flow
 
-1. **Generate** → `POST /api/admin/kb-generate-questions` returns MCQs (each with
+0. **Plan** — pick one or more subjects (chips); their topics appear grouped and
+   filtered to those subjects; tick the topics you want and set **how many** for
+   each. The form emits a `KbGenerationPlanItem[]` (subject, topic, count).
+1. **Generate** → the panel calls `POST /api/admin/kb-generate-questions` **once
+   per planned topic** (with progress), aggregating all results. Each MCQ has
    options, answer, short + long explanation, concepts, **editable difficulty**,
-   a source **citation**, and a `⚠ Sources disagree` flag where applicable).
+   a source **citation**, and a `⚠ Sources disagree` flag where applicable.
 2. **Review** — inline: edit each question's difficulty, deselect any you don't
    want. A banner says whether the batch was grounded in sources or fell back to
    general knowledge.
