@@ -9,6 +9,7 @@ const menuItems = [
   { label: "Add Question", href: "/admin/add-question" },
   { label: "Excel Import", href: "/admin/import" },
   { label: "Knowledge Base", href: "/admin/knowledge-base" },
+  { label: "Generate Questions", href: "/admin/generate-questions" },
   { label: "Mock Test Settings", href: "/admin/mock-settings" },
   { label: "Settings", href: "/admin/settings" },
 ];

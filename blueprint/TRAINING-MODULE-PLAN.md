@@ -1,14 +1,17 @@
 # Training Module — Knowledge Base (RAG) Plan
 
-> **Status:** ✅ **Phase 1 BUILT** (2026-06-16) — Knowledge Base upload + ingestion
-> (pgvector tables, storage bucket, admin section) + grounded explanations.
-> Phases 2–3 remain planned (see §14). Keep [`BLUEPRINT.md`](./BLUEPRINT.md) as
-> the source of truth for the shipped app; this file is the forward plan for the
-> rest of the "training" feature.
+> **Status:** ✅ **Phases 1 & 2 BUILT** (2026-06-16). Phase 1 — Knowledge Base
+> upload + ingestion (pgvector tables, storage bucket, admin section) + grounded
+> explanations. Phase 2 — book-grounded **question generation with difficulty**
+> → draft/review. Phase 3 (student-facing citations + contradiction-review UI +
+> embeddings-based related questions) remains planned (see §14). Keep
+> [`BLUEPRINT.md`](./BLUEPRINT.md) as the source of truth for the shipped app.
 >
-> **Phase 1 decisions taken:** all four input types shipped (PDF, paste, URL,
-> image); image OCR uses **GPT-4o vision** (no new system dependency); trust
-> tiers = recommended 3-tier; one-time DB setup lives in
+> **Decisions taken:** all four input types shipped (PDF, paste, URL, image);
+> image OCR uses **GPT-4o vision** (no new system dependency); trust tiers =
+> recommended 3-tier; difficulty generation supports **both** modes (targeted
+> level *or* mixed+auto-tag); generated questions **always land as drafts** (never
+> auto-publish). One-time DB setup:
 > [`../supabase/knowledge-base-setup.sql`](../supabase/knowledge-base-setup.sql).
 
 ## 1. Goal

@@ -9,7 +9,7 @@
 > time a feature is added or changed in the app, this file is updated to match — automatically,
 > without being asked.
 >
-> **Last synced with codebase:** 2026-06-16 (Knowledge Base / Training Module — Phase 1)
+> **Last synced with codebase:** 2026-06-16 (Knowledge Base / Training Module — Phases 1 & 2)
 
 ---
 
@@ -32,7 +32,7 @@
 15. [Business rules & logic](#15-business-rules--logic)
 16. [UI/design conventions](#16-uidesign-conventions)
 17. [Build & deploy](#17-build--deploy)
-18. [Knowledge Base (Training Module / RAG)](#18b-knowledge-base-training-module--rag--phase-1)
+18. [Knowledge Base (Training Module / RAG)](#18b-knowledge-base-training-module--rag--phases-1--2)
 19. [Changelog](#18-changelog)
 
 ---
@@ -928,11 +928,12 @@ preview table (then AI-fill / import as above).
 
 ---
 
-## 18b. Knowledge Base (Training Module / RAG) — Phase 1
+## 18b. Knowledge Base (Training Module / RAG) — Phases 1 & 2
 
 > Full forward design: [`TRAINING-MODULE-PLAN.md`](./TRAINING-MODULE-PLAN.md). This
-> section documents what's **shipped** (Phase 1). Phases 2–3 (book-grounded
-> question generation, student-facing citations + contradiction UI) remain planned.
+> section documents what's **shipped** (Phases 1 & 2). Phase 3 (student-facing
+> citations + contradiction-review UI + embeddings-based related questions)
+> remains planned.
 
 **Goal.** Let admins feed the system *book knowledge*, then **ground AI
 explanations** in it via Retrieval-Augmented Generation (RAG) — not fine-tuning,
@@ -975,17 +976,75 @@ then distance. **One-time setup** (anon key can't DDL): run
 dashboard — enables pgvector, creates tables + index + RPC + the storage bucket +
 permissive RLS mirroring the app's anon-key model.
 
-**New code.** `types/knowledge-base.ts`; services `rag-service.ts` (server-only:
-chunk/embed/extract/retrieve) + `knowledge-base-service.ts` (client CRUD); route
-`api/admin/kb-ingest/` (+README); page `app/admin/knowledge-base/` (+README);
-components `components/knowledge-base/` (add-source-form, source-list, +README);
-sidebar nav entry; SQL `supabase/knowledge-base-setup.sql` (+`supabase/README.md`).
+**New code (Phase 1).** `types/knowledge-base.ts`; services `rag-service.ts`
+(server-only: chunk/embed/extract/retrieve) + `knowledge-base-service.ts` (client
+CRUD); route `api/admin/kb-ingest/` (+README); page `app/admin/knowledge-base/`
+(+README); components `components/knowledge-base/` (add-source-form, source-list,
++README); sidebar nav entry; SQL `supabase/knowledge-base-setup.sql`
+(+`supabase/README.md`).
+
+### Phase 2 — book-grounded question generation with difficulty
+
+**Admin section — `/admin/generate-questions`** (sidebar link "Generate
+Questions"). Admin picks **subject → topic → (optional chapter) → difficulty →
+count**, hits Generate, then **reviews** the result before saving.
+
+- **`POST /api/admin/kb-generate-questions`** (server): retrieves the top-10
+  enabled KB chunks for `subject — topic — chapter` (trust-tier ranked via
+  `match_kb_chunks`), then has `gpt-4o-mini` write `count` MCQs **grounded** in
+  those passages (paraphrased, not verbatim). Each question returns 4 options, the
+  answer, short + long explanation, concepts, a **difficulty**, a **citation**
+  label, and a `sourcesDisagree` flag. If no passages match it still generates
+  from exam-standard facts but returns `grounded: false`. Incomplete items and
+  bad answers are dropped server-side.
+- **Difficulty modes** (resolves the plan's open decision as *both*): a **target
+  level** (easy/medium/hard) applied to all, or **Mixed** — a spread that the AI
+  auto-tags per question. Each question's difficulty is **editable** in the review
+  list before saving.
+- **Review + save** (`components/knowledge-base/generate-questions-panel`): the
+  batch is shown as cards (correct option highlighted, editable difficulty
+  dropdown, `⚠ Sources disagree` badge, citation, expandable explanation) with a
+  grounded/ungrounded banner. The admin deselects any unwanted items and clicks
+  **Save N as drafts**. Kept questions become **draft** `Question`s
+  (`importSource: "ai_generated"`, `status: "draft"`, `aiReviewStatus:
+  "suggested"`, `isMockEligible: true`) and flow into the normal **draft → review
+  → publish** workflow. Citation + conflict markers are stored in `aiTags`
+  (`"source: …"`, `"⚠ sources-disagree"`) so reviewers see them in Question
+  Management.
+- **Contradiction handling** (§9): book-grounded questions **never auto-publish**
+  — everything lands as a draft, and conflicting ones carry the flag.
+
+**New code (Phase 2).** Types `KbGenerateRequest` / `GeneratedQuestion` /
+`KbGenerateResponse` in `types/knowledge-base.ts`; route
+`api/admin/kb-generate-questions/` (+README); page `app/admin/generate-questions/`
+(+README); component `components/knowledge-base/generate-questions-panel.tsx`;
+sidebar nav entry. Reuses `rag-service` retrieval and the existing
+`admin-question-store.saveQuestion` draft path.
 
 ---
 
 ## 19. Changelog
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
+
+- **2026-06-16** — **Training Module Phase 2 — book-grounded question generation
+  with difficulty.** New admin section **`/admin/generate-questions`** (sidebar
+  link): pick subject → topic → optional chapter → difficulty → count. **`POST
+  /api/admin/kb-generate-questions`** retrieves the top-10 enabled KB chunks
+  (trust-tier ranked) and has `gpt-4o-mini` write that many MCQs grounded in them
+  (paraphrased), each with options/answer/short+long explanation/concepts/an
+  **editable difficulty**/a **citation**/a `sourcesDisagree` flag; falls back to
+  general knowledge with `grounded: false` when no sources match. **Difficulty
+  supports both modes**: a target level or **Mixed** (spread, auto-tagged). The
+  review panel (`components/knowledge-base/generate-questions-panel`) shows the
+  batch with correct-option highlight, per-question difficulty dropdown, conflict
+  badge, citation, and a grounded/ungrounded banner; the admin deselects unwanted
+  items and saves the rest as **draft** questions (`importSource: "ai_generated"`,
+  always `status: "draft"` — book-grounded questions never auto-publish, §9) that
+  flow into the existing draft → review → publish workflow. Citation + conflict
+  markers ride along in `aiTags`. New: `KbGenerateRequest`/`GeneratedQuestion`/
+  `KbGenerateResponse` types, the route (+README), the page (+README), the panel
+  component, and a sidebar entry. Reuses `rag-service` + `saveQuestion`.
 
 - **2026-06-16** — **Knowledge Base (Training Module / RAG) — Phase 1.** New admin
   section **`/admin/knowledge-base`** (sidebar link) to feed the system *book

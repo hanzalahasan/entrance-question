@@ -55,6 +55,51 @@ export type KbRetrievedChunk = {
   title: string;
 };
 
+// ── Phase 2: book-grounded question generation ──────────────────────────────
+
+/** What the generate-questions form sends. `difficulty: "mixed"` = a spread. */
+export type KbGenerateRequest = {
+  subjectId: number;
+  subjectName: string;
+  topicId: number;
+  topicName: string;
+  chapter?: string | null;
+  difficulty: "easy" | "medium" | "hard" | "mixed";
+  count: number;
+};
+
+/** One AI-generated MCQ (raw output, before it becomes a draft Question). */
+export type GeneratedQuestion = {
+  question: string;
+  optionA: string;
+  optionB: string;
+  optionC: string;
+  optionD: string;
+  answer: "A" | "B" | "C" | "D";
+  explanation: string;
+  longExplanation: string;
+  concepts: string[];
+  difficulty: "easy" | "medium" | "hard";
+  /** AI flagged that retrieved sources disagree — must be reviewed, never auto-published. */
+  sourcesDisagree: boolean;
+  /** Citation label(s) the question is grounded in, e.g. "Physics NCERT, Ch 4". */
+  citation: string | null;
+};
+
+export type KbGenerateResponse = {
+  questions: GeneratedQuestion[];
+  /** Whether any Knowledge Base passages backed the generation. */
+  grounded: boolean;
+  /** The sources that were retrieved (for display). */
+  citations: {
+    sourceId: number;
+    title: string;
+    citationLabel: string | null;
+    chapter: string | null;
+    trustTier: KbTrustTier;
+  }[];
+};
+
 /** Payload the admin UI sends to /api/admin/kb-ingest. */
 export type KbIngestRequest = {
   type: KbSourceType;
