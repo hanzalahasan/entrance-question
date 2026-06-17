@@ -367,7 +367,7 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
           dragged (mobile/tablet). */}
       <div className="relative w-full max-w-3xl">
         {isMobile && dx !== 0 && peekQuestion && (
-          <div className="pointer-events-none absolute inset-0 z-0">
+          <div className="pointer-events-none absolute inset-0 z-0 scale-[0.985] blur-[4px]">
             <QuestionPreview question={peekQuestion} />
           </div>
         )}
@@ -452,7 +452,7 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
               type={option.type}
               status={getOptionStatus(option.key)}
               disabled={isLocked}
-              highlighted={!isAnswered && index === highlightedIndex}
+              highlighted={!isMobile && !isAnswered && index === highlightedIndex}
               onMouseEnter={() => setHighlightedIndex(index)}
               onClick={() => {
                 setHighlightedIndex(index);

@@ -1040,6 +1040,17 @@ sidebar nav entry. Reuses `rag-service` retrieval and the existing
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-17** — **Mobile polish: no default option highlight, blurred peek
+  card, collapsible filter bar.** (1) On mobile the first option no longer shows
+  the keyboard-nav highlight border by default (`highlighted` gated by
+  `!isMobile`) — nothing looks pre-selected. (2) The card peeking behind a swipe
+  is now lightly **blurred** (`blur-[4px]` + slight scale) so it reads as
+  background until it swaps in. (3) The home **top filter bar collapses** on
+  mobile into a slim "☰ Filters" toggle (with active-count + question count);
+  tapping expands it with a fluid `grid-template-rows` height animation
+  (overflow opens post-transition so the dropdowns aren't clipped). Desktop is
+  always expanded and unchanged.
+
 - **2026-06-17** — **Practice swipe: real card-stack behind + clean exit.** The
   swipe now shows the **actual next/previous question** behind the active card
   (new `QuestionPreview` face) instead of an empty blurred shell — next on a right

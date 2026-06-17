@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { QuestionFilters } from "@/types/filter";
 import { subjectsMaster, topicsMaster } from "@/lib/master-data";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 
 type TopFilterBarProps = {
   totalQuestions: number;
@@ -49,6 +50,20 @@ export default function TopFilterBar({
   const [yearOpen, setYearOpen] = useState(false);
   const [yearSearch, setYearSearch] = useState("");
   const [moreOpen, setMoreOpen] = useState(false);
+
+  // Mobile: the filter bar collapses to a slim toggle so the question is front
+  // and centre; tapping expands it (fluid height animation). Desktop is always
+  // expanded. `overflowOpen` lets the dropdowns escape the clip once fully open.
+  const isMobile = useIsMobile();
+  const [expanded, setExpanded] = useState(false);
+  const [overflowOpen, setOverflowOpen] = useState(false);
+
+  function toggleExpanded() {
+    setExpanded((e) => {
+      if (e) setOverflowOpen(false); // collapsing → clip immediately
+      return !e;
+    });
+  }
 
   const subjectRef = useRef<HTMLDivElement>(null);
   const yearRef = useRef<HTMLDivElement>(null);
@@ -173,6 +188,47 @@ export default function TopFilterBar({
   return (
     <>
       <section className="mb-3 rounded-3xl border border-gray-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-800 md:mb-5 md:p-4">
+        {/* Mobile: slim toggle to expand/collapse the filters */}
+        {isMobile && (
+          <button
+            type="button"
+            onClick={toggleExpanded}
+            className="flex w-full items-center justify-between gap-2 px-1 py-1 text-left"
+          >
+            <span className="flex items-center gap-2 text-sm font-black text-gray-800 dark:text-white">
+              <span aria-hidden>☰</span>
+              Filters
+              {moreFilterCount > 0 && (
+                <span className="grid h-5 min-w-5 place-items-center rounded-full bg-blue-600 px-1.5 text-xs font-black text-white">
+                  {moreFilterCount}
+                </span>
+              )}
+            </span>
+            <span className="flex items-center gap-2 text-xs font-bold text-gray-500 dark:text-slate-400">
+              {totalQuestions} questions
+              <span
+                className={`transition-transform duration-300 ${expanded ? "rotate-180" : ""}`}
+              >
+                ▾
+              </span>
+            </span>
+          </button>
+        )}
+
+        {/* Collapsible content (always open on desktop). The grid-rows trick
+            animates height fluidly; overflow opens after the transition so the
+            subject/year dropdowns aren't clipped. */}
+        <div
+          onTransitionEnd={() => {
+            if (expanded) setOverflowOpen(true);
+          }}
+          className={`grid ${
+            isMobile ? "transition-[grid-template-rows] duration-300 ease-out" : ""
+          } ${!isMobile || expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"} ${
+            isMobile && expanded ? "mt-3" : ""
+          }`}
+        >
+          <div className={!isMobile || overflowOpen ? "overflow-visible" : "overflow-hidden"}>
         <div className="grid grid-cols-2 gap-2 md:gap-3 lg:grid-cols-[1.1fr_1.1fr_.75fr_auto]">
           <div ref={subjectRef} className="relative">
             <label className="mb-1 hidden text-xs font-black text-gray-500 dark:text-slate-400 md:mb-2 md:block md:text-sm">
@@ -351,6 +407,8 @@ export default function TopFilterBar({
         <p className="mt-2 text-center text-xs font-semibold text-gray-500 dark:text-slate-400 md:mt-3 md:text-sm">
           Total Questions: {totalQuestions}
         </p>
+          </div>
+        </div>
       </section>
 
       {moreOpen && (
