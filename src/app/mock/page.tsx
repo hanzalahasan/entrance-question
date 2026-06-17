@@ -84,8 +84,12 @@ export default function MockPage() {
           clearAttempt();
         }
         setPhase("rules");
-      }
-    );
+      })
+      .catch(() => {
+        // Never leave the user stuck on the spinner if a load fails.
+        setConfig((c) => c ?? resolveMockConfig([]));
+        setPhase("rules");
+      });
   }, []);
 
   // Taking a mock requires an account (so results save to the dashboard).

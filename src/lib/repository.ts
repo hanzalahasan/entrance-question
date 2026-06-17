@@ -13,7 +13,9 @@ import type { Question } from "@/types/question";
 import type { SubjectMaster, TopicMaster } from "@/types/master";
 import { sampleQuestions } from "@/lib/sample-questions";
 import { subjectsMaster, topicsMaster } from "@/lib/master-data";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+// The public bank (questions/subjects/topics) is read+written as anon, never as
+// the logged-in user — see supabasePublic in lib/supabase.ts.
+import { supabasePublic, isSupabaseConfigured } from "@/lib/supabase";
 
 // ── Interfaces ───────────────────────────────────────────────────────
 
@@ -257,8 +259,8 @@ function rowToTopic(r: any): TopicMaster {
 // `supabase` is non-null here because these repos are only selected when
 // isSupabaseConfigured is true.
 function sb() {
-  if (!supabase) throw new Error("Supabase client is not configured.");
-  return supabase;
+  if (!supabasePublic) throw new Error("Supabase client is not configured.");
+  return supabasePublic;
 }
 
 // ── Supabase implementation ──────────────────────────────────────────

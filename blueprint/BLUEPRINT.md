@@ -1040,6 +1040,19 @@ sidebar nav entry. Reuses `rag-service` retrieval and the existing
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-17** — **Fix: logged-in users saw a blank/hanging app ("Loading mock
+  test…", no questions).** Once a student signed in, supabase-js attached their
+  JWT (the `authenticated` role) to *every* query — including the public bank
+  (questions/subjects/topics/mock_sets), whose tables are admin-owned. Those reads
+  failed/were denied for the authenticated role and `repository.getAll` threw,
+  so the mock page's load (no `.catch`) hung forever and the home page showed no
+  questions. Fix: added a second **anon-only** client `supabasePublic`
+  (`persistSession:false`, separate storage key) that never carries a session;
+  `repository` and `mock-set-store` now read/write the public bank through it, so
+  public data is always read as `anon` regardless of login. Also added `.catch`
+  to the mock page load so a failure can never hang the spinner again. The default
+  `supabase` client (with session) still backs auth, profiles, and mock_results.
+
 - **2026-06-16** — **User accounts: login, profiles, dashboard.** Supabase Auth
   (email/password + Google) via a client-side `AuthProvider`/`useAuth`
   (`context/auth-context`) wrapping the app in `app/layout`. New

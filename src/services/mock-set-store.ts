@@ -7,7 +7,9 @@
 // supabase/mock-sets-setup.sql once to create the table.
 // ============================================================================
 
-import { supabase } from "@/lib/supabase";
+// Read/written as anon (public bank data) so logged-in students can read sets
+// regardless of per-role grants — see supabasePublic in lib/supabase.ts.
+import { supabasePublic as supabase } from "@/lib/supabase";
 import type { MockSet } from "@/types/mock";
 import type { DifficultyLevel } from "@/types/question";
 
