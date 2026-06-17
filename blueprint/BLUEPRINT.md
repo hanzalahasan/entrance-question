@@ -9,7 +9,9 @@
 > time a feature is added or changed in the app, this file is updated to match — automatically,
 > without being asked.
 >
-> **Last synced with codebase:** 2026-06-16 (Knowledge Base / Training Module — Phases 1 & 2)
+> **Last synced with codebase:** 2026-06-17 (user accounts + dashboard insights/
+> PDF + super-admin Users + mobile-first pass + practice analytics). See the
+> changelog (§19) for the full dated history.
 
 ---
 
@@ -237,12 +239,25 @@ ADMIN_PASSWORD=your-secret-password
 # Connect a real database when ready to move off localStorage.
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+
+# ── Supabase service role (SECRET — server only) ─────────────────────
+# Only for the super-admin Users page (/admin/users). Bypasses RLS — NEVER
+# expose to the browser (no NEXT_PUBLIC_ prefix). Supabase → Settings → API.
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ```
 
 **Behavior when unset:**
 - No `OPENAI_API_KEY` → AI endpoints return `503` with a clear message; AI features degrade.
 - No `ADMIN_PASSWORD` → `/admin` is open (dev/demo mode); login sets cookie value `"open"`.
 - No / placeholder `NEXT_PUBLIC_SUPABASE_URL` → app uses `localStorage` + seed sample data.
+- No `SUPABASE_SERVICE_ROLE_KEY` → `/api/admin/users` returns `503` (the Users page
+  shows a "add the key" notice); everything else is unaffected.
+
+**Auth note:** the app uses a **second** anon-only Supabase client (`supabasePublic`)
+for the public question bank so logged-in users read it as `anon` (the default
+`supabase` client carries the user session for auth/profiles/mock_results). The
+`/admin/*` middleware guards **pages**; admin **API** routes that expose data
+(e.g. Users) re-check the `admin_token` cookie themselves.
 
 ---
 
@@ -1039,6 +1054,13 @@ sidebar nav entry. Reuses `rag-service` retrieval and the existing
 ## 19. Changelog
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
+
+- **2026-06-17** — **Fix: login/profile widget missing when signed in (auth
+  deadlock).** The auth context `await`ed a Supabase call *inside* the
+  `onAuthStateChange` callback, which holds the auth lock and deadlocks → `loading`
+  stuck `true` → `AuthStatus` rendered nothing. Fixed: callbacks are synchronous
+  (just `setUser`), `loading` resolves in `.finally()`, and the profile loads in a
+  separate effect keyed on the user id.
 
 - **2026-06-17** — **Dashboard sidebar + super-admin Users page.** The student
   **dashboard** now has a sidebar menu — **Overview** (profile + activity),
