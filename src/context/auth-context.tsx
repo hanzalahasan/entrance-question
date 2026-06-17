@@ -74,25 +74,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user) setProfile(await loadProfile(user.id));
   }
 
+  // The signed-in user id — drives a separate profile load below. IMPORTANT: do
+  // NOT `await` Supabase calls inside onAuthStateChange; that holds the auth lock
+  // and deadlocks (the app gets stuck "loading"). Keep the callback synchronous.
+  const userId = user?.id ?? null;
+
   useEffect(() => {
     if (!supabase) return;
 
-    supabase.auth.getSession().then(async ({ data }) => {
-      const u = data.session?.user ?? null;
-      setUser(u);
-      if (u) setProfile(await loadProfile(u.id));
-      setLoading(false);
-    });
-
-    const { data: sub } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        const u = session?.user ?? null;
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        const u = data.session?.user ?? null;
         setUser(u);
-        setProfile(u ? await loadProfile(u.id) : null);
-      }
-    );
+        if (!u) setProfile(null);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false)); // always resolve, never hang
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      const u = session?.user ?? null;
+      setUser(u);
+      if (!u) setProfile(null); // profile for a present user is loaded below
+    });
     return () => sub.subscription.unsubscribe();
   }, []);
+
+  // Load the profile whenever the user changes — OUTSIDE the auth callbacks, so
+  // the Supabase call here can't deadlock the auth lock.
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    loadProfile(userId).then((p) => {
+      if (!cancelled) setProfile(p);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
   async function signOut() {
     await supabase?.auth.signOut();
