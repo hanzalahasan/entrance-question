@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { Question } from "@/types/question";
 import { useIsMobile } from "@/hooks/use-is-mobile";
+import { useAuth } from "@/context/auth-context";
+import { recordPracticeAttempt } from "@/services/practice-attempt-store";
 import QuestionOption from "./question-option";
 import QuestionPreview from "./question-preview";
 import RelatedQuestionWindow from "./related-question-window";
@@ -55,6 +57,9 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
   // Touch swipe-to-navigate (mobile/tablet), Tinder-style: the card follows the
   // finger; past a threshold it flies off and advances, else it springs back.
   const isMobile = useIsMobile();
+  const { user } = useAuth();
+  // Record only the FIRST answer per question view (for dashboard analytics).
+  const recordedRef = useRef(false);
   const [dx, setDx] = useState(0); // current horizontal offset (px)
   const [swiping, setSwiping] = useState(false); // actively dragging horizontally
   const [snap, setSnap] = useState(false); // instant (no-transition) reposition
@@ -123,6 +128,7 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
     setShowExplanation(false);
     setExplanationSeen(false);
     setHighlightedIndex(0);
+    recordedRef.current = false;
   }
 
   // Open the explanation window (it manages its own position/size/long view).
@@ -205,6 +211,15 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
   function handleSelectAnswer(optionKey: string) {
     if (isLocked) return;
     setSelectedAnswer(optionKey);
+    // Log the first attempt for signed-in users (best-effort, non-blocking).
+    if (user && !recordedRef.current) {
+      recordedRef.current = true;
+      recordPracticeAttempt(
+        user.id,
+        currentQuestion,
+        optionKey === currentQuestion.answer
+      ).catch(() => {});
+    }
   }
 
   function handleRevealAnswer() {

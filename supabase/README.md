@@ -11,6 +11,7 @@ bucket creation). These are one-time setup scripts, not app code.
 | `knowledge-base-setup.sql` | Training Module / RAG. Enables `pgvector`; creates `kb_sources` + `kb_chunks` (+ vector index); the `match_kb_chunks` similarity-search RPC; the private `knowledge-base` Storage bucket; and permissive RLS policies that mirror the app's existing anon-key access. |
 | `mock-sets-setup.sql` | Mock Sets — named, fixed difficulty papers. Creates the `mock_sets` table (name, difficulty, frozen `question_ids`, status) + permissive RLS, so every student who takes a set gets the same questions. |
 | `auth-setup.sql` | User accounts. Creates `profiles` (+ a trigger that auto-creates one on signup) and `mock_results` (saved mock history per user) with owner-only RLS, plus the public `avatars` Storage bucket. **Also enable Email + Google providers** in Authentication → Providers (Google needs OAuth credentials from Google Cloud). |
+| `practice-attempts-setup.sql` | `practice_attempts` table (owner-only RLS) — records each random-practice answer per user, powering the dashboard's strengths/weaknesses analysis. |
 
 ## How to run
 

@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 import { useAuth } from "@/context/auth-context";
 import { getMockResults } from "@/services/mock-result-store";
+import { getPracticeAttempts, type PracticeAttempt } from "@/services/practice-attempt-store";
 import { getStoredQuestions } from "@/services/admin-question-store";
 import { scoreMock } from "@/services/mock-service";
+import { computePerformance } from "@/services/performance-service";
 import type { Question } from "@/types/question";
 import type { MockAttempt, MockResult, MockResultRecord } from "@/types/mock";
 
@@ -15,6 +17,7 @@ import ThemeToggle from "@/components/theme-toggle";
 import AuthStatus from "@/components/auth/auth-status";
 import ProfileCard from "@/components/dashboard/profile-card";
 import ActivityStats from "@/components/dashboard/activity-stats";
+import PerformanceInsights from "@/components/dashboard/performance-insights";
 import ResultsHistory from "@/components/dashboard/results-history";
 import MockDetailedReport from "@/components/mock/mock-detailed-report";
 import MockReview from "@/components/mock/mock-review";
@@ -49,6 +52,7 @@ export default function DashboardPage() {
   const { user, loading: authLoading, authReady } = useAuth();
 
   const [results, setResults] = useState<MockResultRecord[]>([]);
+  const [practice, setPractice] = useState<PracticeAttempt[]>([]);
   const [bank, setBank] = useState<Question[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
@@ -65,14 +69,22 @@ export default function DashboardPage() {
   // Load history + the question bank (to rebuild reports).
   useEffect(() => {
     if (!user) return;
-    Promise.all([getMockResults(user.id), getStoredQuestions()]).then(
-      ([res, all]) => {
-        setResults(res);
-        setBank(all.filter((q) => q.status === "published"));
-        setLoadingData(false);
-      }
-    );
+    Promise.all([
+      getMockResults(user.id),
+      getPracticeAttempts(user.id),
+      getStoredQuestions(),
+    ]).then(([res, prac, all]) => {
+      setResults(res);
+      setPractice(prac);
+      setBank(all.filter((q) => q.status === "published"));
+      setLoadingData(false);
+    });
   }, [user]);
+
+  const performance = useMemo(
+    () => computePerformance(bank, results, practice),
+    [bank, results, practice]
+  );
 
   function openReport(rec: MockResultRecord) {
     const attempt = recordToAttempt(rec);
@@ -125,6 +137,17 @@ export default function DashboardPage() {
             Activity
           </h2>
           <ActivityStats results={results} />
+        </div>
+
+        <div>
+          <h2 className="mb-3 text-lg font-black text-gray-900 dark:text-white">
+            Strengths &amp; weaknesses
+          </h2>
+          {loadingData ? (
+            <Notice>Analysing your performance…</Notice>
+          ) : (
+            <PerformanceInsights performance={performance} />
+          )}
         </div>
 
         <div>
