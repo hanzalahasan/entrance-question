@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Question } from "@/types/question";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import QuestionOption from "./question-option";
 import RelatedQuestionWindow from "./related-question-window";
 import ExplanationWindow from "./explanation-window";
@@ -49,8 +50,15 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
   // so navigation always feels responsive.
   const [navPulse, setNavPulse] = useState<"next" | "prev" | null>(null);
   const pulseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Start point of a touch, for swipe-to-navigate (mobile/tablet).
-  const swipeStart = useRef<{ x: number; y: number } | null>(null);
+
+  // Touch swipe-to-navigate (mobile/tablet), Tinder-style: the card follows the
+  // finger; past a threshold it flies off and advances, else it springs back.
+  const isMobile = useIsMobile();
+  const [dx, setDx] = useState(0); // current horizontal offset (px)
+  const [swiping, setSwiping] = useState(false); // actively dragging horizontally
+  const swipe = useRef<{ x: number; y: number; lock: null | "h" | "v" } | null>(
+    null
+  );
 
   function pulseNav(direction: "next" | "prev") {
     if (pulseTimer.current) clearTimeout(pulseTimer.current);
@@ -281,40 +289,87 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
     }
   };
 
-  // Touch swipe (mobile/tablet): swipe RIGHT → next question, LEFT → previous.
-  // Touch events fire only on touch devices, so desktop mouse is unaffected. A
-  // real swipe (finger lifts far from start) doesn't fire option clicks.
+  // Swipe RIGHT → next, LEFT → previous. The card tracks the finger; direction
+  // is locked on the first move so vertical drags still scroll the page.
   function onTouchStart(e: React.TouchEvent) {
+    if (showExplanation || relatedSession || dx !== 0) return;
     const t = e.touches[0];
-    swipeStart.current = { x: t.clientX, y: t.clientY };
+    swipe.current = { x: t.clientX, y: t.clientY, lock: null };
   }
-  function onTouchEnd(e: React.TouchEvent) {
-    const s = swipeStart.current;
-    swipeStart.current = null;
-    if (!s || showExplanation || relatedSession) return; // ignore while a sheet is open
-    const t = e.changedTouches[0];
-    const dx = t.clientX - s.x;
-    const dy = t.clientY - s.y;
-    // Require a clear, mostly-horizontal swipe (so it doesn't fight scrolling).
-    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-    if (dx > 0) goNext();
-    else goPrevious();
+  function onTouchMove(e: React.TouchEvent) {
+    const s = swipe.current;
+    if (!s) return;
+    const t = e.touches[0];
+    const ddx = t.clientX - s.x;
+    const ddy = t.clientY - s.y;
+    if (s.lock === null) {
+      if (Math.abs(ddx) < 8 && Math.abs(ddy) < 8) return; // wait for intent
+      s.lock = Math.abs(ddx) > Math.abs(ddy) ? "h" : "v";
+      if (s.lock === "h") setSwiping(true);
+    }
+    if (s.lock === "h") setDx(ddx);
+  }
+  function onTouchEnd() {
+    const s = swipe.current;
+    swipe.current = null;
+    if (!s || s.lock !== "h") {
+      setSwiping(false);
+      return;
+    }
+    setSwiping(false);
+    const THRESHOLD = 90;
+    if (Math.abs(dx) > THRESHOLD) {
+      // Fling the card off, then advance and snap the (new) card back to centre.
+      const dir = dx > 0 ? 1 : -1;
+      const off = (typeof window !== "undefined" ? window.innerWidth : 500) * 1.15;
+      setDx(dir * off);
+      window.setTimeout(() => {
+        if (dir > 0) goNext();
+        else goPrevious();
+        setDx(0);
+      }, 200);
+    } else {
+      setDx(0); // spring back
+    }
   }
 
   return (
     <>
-      {/* When related-question mode is on, the main card blurs to push focus to
-          the floating related window; hovering it brings it back into focus. */}
-      <div
-        onMouseEnter={() => setOriginHovered(true)}
-        onMouseLeave={() => setOriginHovered(false)}
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
-        style={
-          relatedSession && !originHovered ? { filter: "blur(2.5px)" } : undefined
-        }
-        className="w-full max-w-3xl rounded-3xl border border-gray-200 bg-white p-5 shadow-sm transition duration-200 dark:border-slate-700 dark:bg-slate-800 md:p-8"
-      >
+      {/* Swipe stage: a blurred "next card" peeks behind while the top card is
+          dragged (mobile/tablet). */}
+      <div className="relative w-full max-w-3xl">
+        {isMobile && dx !== 0 && (
+          <div className="pointer-events-none absolute inset-0 -z-10 scale-[0.96] rounded-3xl border border-gray-200 bg-white opacity-70 blur-[3px] dark:border-slate-700 dark:bg-slate-800" />
+        )}
+
+        {/* When related-question mode is on, the main card blurs to push focus to
+            the floating related window; hovering it brings it back into focus. */}
+        <div
+          onMouseEnter={() => setOriginHovered(true)}
+          onMouseLeave={() => setOriginHovered(false)}
+          onTouchStart={isMobile ? onTouchStart : undefined}
+          onTouchMove={isMobile ? onTouchMove : undefined}
+          onTouchEnd={isMobile ? onTouchEnd : undefined}
+          style={
+            isMobile
+              ? {
+                  transform: `translateX(${dx}px) rotate(${dx * 0.04}deg)`,
+                  transition: swiping
+                    ? "none"
+                    : "transform 0.28s cubic-bezier(0.22, 1, 0.36, 1)",
+                  touchAction: "pan-y",
+                  ...(relatedSession ? { filter: "blur(2.5px)" } : {}),
+                }
+              : relatedSession && !originHovered
+                ? { filter: "blur(2.5px)" }
+                : undefined
+          }
+          className={`w-full rounded-3xl border bg-white p-5 shadow-sm transition duration-200 dark:bg-slate-800 md:p-8 ${
+            swiping
+              ? "border-blue-400 ring-2 ring-blue-400/60 dark:border-blue-300 dark:ring-blue-300/50"
+              : "border-gray-200 dark:border-slate-700"
+          }`}
+        >
         <div className="mb-4 flex flex-wrap justify-center gap-2">
           <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
             {subjectLabel}
@@ -434,6 +489,7 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
           >
             Next
           </button>
+        </div>
         </div>
       </div>
 
