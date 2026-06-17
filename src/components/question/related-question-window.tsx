@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import type { Question } from "@/types/question";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import QuestionOption from "./question-option";
 import { renderRich } from "./rich-text";
 
@@ -61,6 +62,7 @@ export default function RelatedQuestionWindow({
   fontSize,
   onClose,
 }: RelatedQuestionWindowProps) {
+  const isMobile = useIsMobile();
   const [index, setIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
@@ -187,7 +189,7 @@ export default function RelatedQuestionWindow({
     onClose,
   ]);
 
-  if (questions.length === 0 || !pos) return null;
+  if (questions.length === 0 || (!pos && !isMobile)) return null;
 
   const current = questions[index];
   const isAnswered = selectedAnswer !== null;
@@ -246,19 +248,40 @@ export default function RelatedQuestionWindow({
   return (
     // Full-screen, click-through layer so the main card behind stays hoverable;
     // only the window itself captures pointer events.
-    <div className="pointer-events-none fixed inset-0 z-[60]">
+    <div
+      className={`fixed inset-0 z-[60] ${isMobile ? "bg-black/50" : "pointer-events-none"}`}
+      onClick={isMobile ? onClose : undefined}
+    >
       <div
-        style={{
-          left: pos.x,
-          top: pos.y,
-          width: Math.min(WIDTH, window.innerWidth - 24),
-        }}
-        className="pointer-events-auto absolute flex max-h-[85vh] flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800"
+        onClick={isMobile ? (e) => e.stopPropagation() : undefined}
+        style={
+          isMobile
+            ? undefined
+            : {
+                left: pos!.x,
+                top: pos!.y,
+                width: Math.min(WIDTH, window.innerWidth - 24),
+              }
+        }
+        className={
+          isMobile
+            ? "pointer-events-auto fixed inset-x-0 bottom-0 flex max-h-[90dvh] flex-col overflow-hidden rounded-t-3xl border border-gray-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800"
+            : "pointer-events-auto absolute flex max-h-[85vh] flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800"
+        }
       >
-        {/* Header — drag handle + count + close */}
+        {/* Mobile grab affordance */}
+        {isMobile && (
+          <div className="flex justify-center pt-2">
+            <span className="h-1.5 w-10 rounded-full bg-gray-300 dark:bg-slate-600" />
+          </div>
+        )}
+
+        {/* Header — drag handle on desktop, static on mobile */}
         <div
-          onPointerDown={startMove}
-          className="flex cursor-move select-none items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-slate-700"
+          onPointerDown={isMobile ? undefined : startMove}
+          className={`flex select-none items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-slate-700 ${
+            isMobile ? "" : "cursor-move"
+          }`}
         >
           <span className="text-sm font-black uppercase tracking-wide text-blue-600 dark:text-blue-400">
             Related question {index + 1} of {questions.length}

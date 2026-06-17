@@ -8,6 +8,7 @@ import {
 } from "react";
 import { Maximize2, Minimize2 } from "lucide-react";
 import type { Question } from "@/types/question";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import { renderRich } from "./rich-text";
 
 const POS_KEY = "eq_expl_pos";
@@ -87,6 +88,7 @@ export default function ExplanationWindow({
   dimmed,
   onClose,
 }: ExplanationWindowProps) {
+  const isMobile = useIsMobile();
   const [showLong, setShowLong] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -249,25 +251,38 @@ export default function ExplanationWindow({
   }
 
   return (
-    <div className={`fixed inset-0 z-50 ${dimmed ? "pointer-events-none" : "bg-black/50"}`}>
-      {/* Movable always. Short = small, auto-height. Long = sized + resizable. */}
+    <div
+      className={`fixed inset-0 z-50 ${dimmed ? "pointer-events-none" : "bg-black/50"}`}
+      onClick={isMobile && !dimmed ? onClose : undefined}
+    >
+      {/* Desktop: a movable/resizable window. Mobile: a full-width bottom sheet. */}
       <div
         ref={winRef}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        style={{
-          left: winPos.x,
-          top: winPos.y,
-          width: winSize.w,
-          ...(showLong ? { height: winSize.h } : {}),
-          ...(dimmed && !hovered ? { filter: "blur(2.5px)" } : {}),
-        }}
-        className={`pointer-events-auto absolute flex flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-slate-800 ${
-          showLong ? "" : "max-h-[60vh]"
-        }`}
+        onClick={isMobile ? (e) => e.stopPropagation() : undefined}
+        style={
+          isMobile
+            ? undefined
+            : {
+                left: winPos.x,
+                top: winPos.y,
+                width: winSize.w,
+                ...(showLong ? { height: winSize.h } : {}),
+                ...(dimmed && !hovered ? { filter: "blur(2.5px)" } : {}),
+              }
+        }
+        className={
+          isMobile
+            ? "pointer-events-auto fixed inset-x-0 bottom-0 flex max-h-[90dvh] flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl dark:bg-slate-800"
+            : `pointer-events-auto absolute flex flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-slate-800 ${
+                showLong ? "" : "max-h-[60vh]"
+              }`
+        }
       >
-        {/* Resize handles — every edge + corner (long explanation only) */}
-        {showLong &&
+        {/* Resize handles — every edge + corner (desktop long explanation only) */}
+        {!isMobile &&
+          showLong &&
           (
             [
               ["n", "left-0 right-0 top-0 h-1.5 cursor-ns-resize"],
@@ -288,12 +303,21 @@ export default function ExplanationWindow({
             />
           ))}
 
-        {/* Header — drag handle */}
+        {/* Mobile grab affordance */}
+        {isMobile && (
+          <div className="flex justify-center pt-2">
+            <span className="h-1.5 w-10 rounded-full bg-gray-300 dark:bg-slate-600" />
+          </div>
+        )}
+
+        {/* Header — drag handle on desktop, static on mobile */}
         <div
-          onPointerDown={startMove}
-          className="flex cursor-move select-none items-center justify-between border-b border-gray-200 p-5 dark:border-slate-700"
+          onPointerDown={isMobile ? undefined : startMove}
+          className={`flex select-none items-center justify-between gap-2 border-b border-gray-200 p-4 dark:border-slate-700 md:p-5 ${
+            isMobile ? "" : "cursor-move"
+          }`}
         >
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white md:text-xl">
             Explanation
           </h3>
 
@@ -322,8 +346,8 @@ export default function ExplanationWindow({
               </span>
             </div>
 
-            {/* Expand / shrink — only for the long explanation, on the RIGHT */}
-            {showLong && (
+            {/* Expand / shrink — desktop long explanation only */}
+            {!isMobile && showLong && (
               <button
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={toggleWindowSize}

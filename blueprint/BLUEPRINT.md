@@ -1040,6 +1040,15 @@ sidebar nav entry. Reuses `rag-service` retrieval and the existing
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-17** — **Mobile-friendliness, phase 1: practice windows → bottom
+  sheets.** New `useIsMobile` hook (`hooks/use-is-mobile.ts`, `useSyncExternalStore`,
+  SSR-safe, 768px). The draggable/resizable **ExplanationWindow** and
+  **RelatedQuestionWindow** now render as **full-width bottom sheets** on phones
+  (no drag/resize/expand grips, a grab bar, tap-backdrop to close, `max-h-90dvh`),
+  while desktop keeps the movable windows unchanged. Targets the
+  practice-on-mobile flow (explanation, explain-more, related questions). Further
+  phases (top filter bar, mock exam palette, dashboards, admin) to follow.
+
 - **2026-06-17** — **Fix: logged-in users saw a blank/hanging app ("Loading mock
   test…", no questions).** Once a student signed in, supabase-js attached their
   JWT (the `authenticated` role) to *every* query — including the public bank
