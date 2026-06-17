@@ -1040,6 +1040,16 @@ sidebar nav entry. Reuses `rag-service` retrieval and the existing
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-17** — **Practice swipe: real card-stack behind + clean exit.** The
+  swipe now shows the **actual next/previous question** behind the active card
+  (new `QuestionPreview` face) instead of an empty blurred shell — next on a right
+  drag, previous on a left. The active card **flings fully off-screen** (×1.3
+  viewport) then the behind-card is swapped in and snapped to centre with no
+  transition (no slide-in flash). Fixed the **Next-button flicker**: swipes call
+  `goNext(false)`/`goPrevious(false)` so the button's `pulseNav` flash doesn't
+  fire mid-gesture. The next question is **pre-picked** (`peekNextId`) so the
+  preview matches what you land on. Mobile/tablet only.
+
 - **2026-06-17** — **Practice: card-style swipe to navigate (touch).** Rebuilt the
   swipe as an interactive, dating-app-style gesture: the card **tracks the
   finger** (translate + slight rotate) with a thin **blue highlight border**

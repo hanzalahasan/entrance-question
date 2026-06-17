@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Question } from "@/types/question";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import QuestionOption from "./question-option";
+import QuestionPreview from "./question-preview";
 import RelatedQuestionWindow from "./related-question-window";
 import ExplanationWindow from "./explanation-window";
 import {
@@ -56,6 +57,10 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
   const isMobile = useIsMobile();
   const [dx, setDx] = useState(0); // current horizontal offset (px)
   const [swiping, setSwiping] = useState(false); // actively dragging horizontally
+  const [snap, setSnap] = useState(false); // instant (no-transition) reposition
+  // Pre-picked next question id, so the card behind shows the real next question
+  // and the one you land on matches it.
+  const [peekNextId, setPeekNextId] = useState<number | null>(null);
   const swipe = useRef<{ x: number; y: number; lock: null | "h" | "v" } | null>(
     null
   );
@@ -79,6 +84,7 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
     setPreviousQuestionId(null);
     setHasUsedPrevious(false);
     setRelatedSession(null);
+    setPeekNextId(getRandomQuestionId(questions, firstQuestionId ?? undefined));
     resetQuestionState();
 
     if (firstQuestionId) {
@@ -155,6 +161,16 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
   const topicLabel =
     currentQuestion.topicName || `Topic ${currentQuestion.topicId}`;
 
+  // The question shown BEHIND the active card while swiping: next on a right
+  // drag, previous on a left drag (the real card you'll land on).
+  const peekId = dx > 0 ? peekNextId : dx < 0 ? previousQuestionId : null;
+  const peekQuestion =
+    peekId == null
+      ? null
+      : lookup.find((q) => q.id === peekId) ??
+        questions.find((q) => q.id === peekId) ??
+        null;
+
   const relatedQuestions = getRelatedQuestions(
     currentQuestion,
     pool && pool.length > 0 ? pool : questions,
@@ -195,10 +211,14 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
     setShowAnswer(true);
   }
 
-  function goNext() {
-    pulseNav("next");
+  // `pulse` flashes the on-screen Next/Previous button; swipes pass false so the
+  // button doesn't flicker mid-gesture.
+  function goNext(pulse = true) {
+    if (pulse) pulseNav("next");
 
-    const nextQuestionId = getRandomQuestionId(questions, currentQuestion.id);
+    // Use the pre-picked next id so it matches the card shown behind the swipe.
+    const nextQuestionId =
+      peekNextId ?? getRandomQuestionId(questions, currentQuestion.id);
 
     if (!nextQuestionId) return;
 
@@ -206,16 +226,19 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
     setCurrentQuestionId(nextQuestionId);
     setHasUsedPrevious(false);
     saveSeenQuestionId(nextQuestionId);
+    setPeekNextId(getRandomQuestionId(questions, nextQuestionId));
     resetQuestionState();
   }
 
-  function goPrevious() {
+  function goPrevious(pulse = true) {
     if (previousQuestionId === null || hasUsedPrevious) return;
 
-    pulseNav("prev");
-    setCurrentQuestionId(previousQuestionId);
+    if (pulse) pulseNav("prev");
+    const prevId = previousQuestionId;
+    setCurrentQuestionId(prevId);
     setPreviousQuestionId(null);
     setHasUsedPrevious(true);
+    setPeekNextId(getRandomQuestionId(questions, prevId));
     resetQuestionState();
   }
 
@@ -318,16 +341,21 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
     }
     setSwiping(false);
     const THRESHOLD = 90;
-    if (Math.abs(dx) > THRESHOLD) {
-      // Fling the card off, then advance and snap the (new) card back to centre.
-      const dir = dx > 0 ? 1 : -1;
-      const off = (typeof window !== "undefined" ? window.innerWidth : 500) * 1.15;
+    const dir = dx > 0 ? 1 : -1;
+    const canGo = dir > 0 ? peekNextId !== null : canGoPrevious;
+
+    if (Math.abs(dx) > THRESHOLD && canGo) {
+      // Fling the card fully off-screen, then swap to the next/prev question
+      // (which is the card already showing behind) and snap to centre instantly.
+      const off = (typeof window !== "undefined" ? window.innerWidth : 500) * 1.3;
       setDx(dir * off);
       window.setTimeout(() => {
-        if (dir > 0) goNext();
-        else goPrevious();
+        setSnap(true); // no transition for the swap → no slide-in flash
+        if (dir > 0) goNext(false);
+        else goPrevious(false);
         setDx(0);
-      }, 200);
+        window.setTimeout(() => setSnap(false), 40);
+      }, 230);
     } else {
       setDx(0); // spring back
     }
@@ -338,8 +366,10 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
       {/* Swipe stage: a blurred "next card" peeks behind while the top card is
           dragged (mobile/tablet). */}
       <div className="relative w-full max-w-3xl">
-        {isMobile && dx !== 0 && (
-          <div className="pointer-events-none absolute inset-0 -z-10 scale-[0.96] rounded-3xl border border-gray-200 bg-white opacity-70 blur-[3px] dark:border-slate-700 dark:bg-slate-800" />
+        {isMobile && dx !== 0 && peekQuestion && (
+          <div className="pointer-events-none absolute inset-0 z-0">
+            <QuestionPreview question={peekQuestion} />
+          </div>
         )}
 
         {/* When related-question mode is on, the main card blurs to push focus to
@@ -354,9 +384,10 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
             isMobile
               ? {
                   transform: `translateX(${dx}px) rotate(${dx * 0.04}deg)`,
-                  transition: swiping
-                    ? "none"
-                    : "transform 0.28s cubic-bezier(0.22, 1, 0.36, 1)",
+                  transition:
+                    swiping || snap
+                      ? "none"
+                      : "transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)",
                   touchAction: "pan-y",
                   ...(relatedSession ? { filter: "blur(2.5px)" } : {}),
                 }
@@ -364,7 +395,7 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
                 ? { filter: "blur(2.5px)" }
                 : undefined
           }
-          className={`w-full rounded-3xl border bg-white p-5 shadow-sm transition duration-200 dark:bg-slate-800 md:p-8 ${
+          className={`relative z-10 w-full rounded-3xl border bg-white p-5 shadow-sm transition duration-200 dark:bg-slate-800 md:p-8 ${
             swiping
               ? "border-blue-400 ring-2 ring-blue-400/60 dark:border-blue-300 dark:ring-blue-300/50"
               : "border-gray-200 dark:border-slate-700"
@@ -443,7 +474,7 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
 
         <div className="mt-6 grid grid-cols-3 items-stretch gap-2">
           <button
-            onClick={goPrevious}
+            onClick={() => goPrevious()}
             disabled={!canGoPrevious}
             className={`w-full rounded-2xl border border-gray-300 px-2 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 active:scale-95 active:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:border-slate-600 dark:text-white dark:hover:bg-slate-700 dark:active:bg-slate-600 md:px-4 md:py-3 md:text-base ${
               navPulse === "prev" ? "scale-95 bg-gray-100 dark:bg-slate-600" : ""
@@ -482,7 +513,7 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
           </div>
 
           <button
-            onClick={goNext}
+            onClick={() => goNext()}
             className={`w-full rounded-2xl border border-gray-300 px-2 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 active:scale-95 active:bg-gray-100 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700 dark:active:bg-slate-600 md:px-4 md:py-3 md:text-base ${
               navPulse === "next" ? "scale-95 bg-gray-100 dark:bg-slate-600" : ""
             }`}
