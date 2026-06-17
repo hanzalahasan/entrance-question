@@ -1040,6 +1040,11 @@ sidebar nav entry. Reuses `rag-service` retrieval and the existing
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-17** — **Practice: swipe to navigate (touch).** On the question card,
+  swipe **right → next**, **left → previous**. Touch-only (desktop mouse
+  unaffected); requires a clear mostly-horizontal swipe (≥60px, not while a sheet
+  is open) so it doesn't fight vertical scroll or option taps.
+
 - **2026-06-17** — **Mobile-friendliness, phase 2: fluid sheets + compact filter
   + nav fix** (mobile/tablet only; desktop unchanged). Bottom sheets now **slide
   up** with a springy ease (`animate-sheet-up`) and a **draggable grab handle** —

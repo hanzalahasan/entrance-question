@@ -49,6 +49,8 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
   // so navigation always feels responsive.
   const [navPulse, setNavPulse] = useState<"next" | "prev" | null>(null);
   const pulseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Start point of a touch, for swipe-to-navigate (mobile/tablet).
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
 
   function pulseNav(direction: "next" | "prev") {
     if (pulseTimer.current) clearTimeout(pulseTimer.current);
@@ -279,6 +281,26 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
     }
   };
 
+  // Touch swipe (mobile/tablet): swipe RIGHT → next question, LEFT → previous.
+  // Touch events fire only on touch devices, so desktop mouse is unaffected. A
+  // real swipe (finger lifts far from start) doesn't fire option clicks.
+  function onTouchStart(e: React.TouchEvent) {
+    const t = e.touches[0];
+    swipeStart.current = { x: t.clientX, y: t.clientY };
+  }
+  function onTouchEnd(e: React.TouchEvent) {
+    const s = swipeStart.current;
+    swipeStart.current = null;
+    if (!s || showExplanation || relatedSession) return; // ignore while a sheet is open
+    const t = e.changedTouches[0];
+    const dx = t.clientX - s.x;
+    const dy = t.clientY - s.y;
+    // Require a clear, mostly-horizontal swipe (so it doesn't fight scrolling).
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    if (dx > 0) goNext();
+    else goPrevious();
+  }
+
   return (
     <>
       {/* When related-question mode is on, the main card blurs to push focus to
@@ -286,6 +308,8 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
       <div
         onMouseEnter={() => setOriginHovered(true)}
         onMouseLeave={() => setOriginHovered(false)}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
         style={
           relatedSession && !originHovered ? { filter: "blur(2.5px)" } : undefined
         }
