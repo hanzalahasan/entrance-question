@@ -1040,6 +1040,21 @@ sidebar nav entry. Reuses `rag-service` retrieval and the existing
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-17** — **Dashboard: strengths/weaknesses, AI study plan, PDF export.**
+  **Practice tracking:** new `practice_attempts` table (owner-only RLS,
+  `supabase/practice-attempts-setup.sql`) + `practice-attempt-store`; the question
+  card records a signed-in user's FIRST answer per question (subject/topic/correct).
+  **Analysis:** `performance-service` aggregates correct/attempted per subject +
+  topic from **mocks + practice**, deriving overall accuracy, strengths (top
+  topics) and weaknesses (low-accuracy topics with ≥3 attempts). **Dashboard:** new
+  "Strengths & weaknesses" section (overall bar + strengths/weaknesses topic lists)
+  and a **Get AI study plan** button → `POST /api/study-plan` (gpt-4o-mini, +README)
+  returns granular per-weak-topic advice (what to revise, how, a common trap).
+  **PDF export:** a **⬇ PDF** button on each mock result downloads a real `.pdf`
+  (`services/pdf-export.ts` via `jspdf`, dynamically imported → code-split to the
+  dashboard) with the user's **photo**, name, score, timing, and per-subject/topic
+  breakdown. New dep: `jspdf`. Needs `practice-attempts-setup.sql` run once.
+
 - **2026-06-17** — **Mock test: mobile-friendly pass.** No swipe in mocks (kept
   out). Exam header restyled for phones: the Pause/Reset/Exit/Submit controls drop
   to their own full-width centred row with compact `text-xs`/tighter padding

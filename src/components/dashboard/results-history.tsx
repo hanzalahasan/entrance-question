@@ -17,9 +17,13 @@ function fmt(n: number): string {
 export default function ResultsHistory({
   results,
   onView,
+  onDownload,
+  downloadingId,
 }: {
   results: MockResultRecord[];
   onView: (record: MockResultRecord) => void;
+  onDownload: (record: MockResultRecord) => void;
+  downloadingId: number | null;
 }) {
   if (results.length === 0) {
     return (
@@ -74,6 +78,13 @@ export default function ResultsHistory({
                   className="rounded-2xl bg-blue-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-blue-700 active:scale-95"
                 >
                   View report
+                </button>
+                <button
+                  onClick={() => onDownload(r)}
+                  disabled={downloadingId === r.id}
+                  className="rounded-2xl border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-100 active:scale-95 disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+                >
+                  {downloadingId === r.id ? "…" : "⬇ PDF"}
                 </button>
               </div>
             </div>

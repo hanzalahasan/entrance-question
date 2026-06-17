@@ -49,7 +49,8 @@ function recordToAttempt(rec: MockResultRecord): MockAttempt {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, loading: authLoading, authReady } = useAuth();
+  const { user, profile, loading: authLoading, authReady } = useAuth();
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
 
   const [results, setResults] = useState<MockResultRecord[]>([]);
   const [practice, setPractice] = useState<PracticeAttempt[]>([]);
@@ -86,14 +87,31 @@ export default function DashboardPage() {
     [bank, results, practice]
   );
 
-  function openReport(rec: MockResultRecord) {
+  function rebuild(rec: MockResultRecord) {
     const attempt = recordToAttempt(rec);
     const byId = new Map(bank.map((q) => [q.id, q]));
     const questions = rec.questionIds
       .map((id) => byId.get(id))
       .filter((q): q is Question => Boolean(q));
-    setViewing({ attempt, questions, result: scoreMock(attempt, questions) });
+    return { attempt, questions, result: scoreMock(attempt, questions) };
+  }
+
+  function openReport(rec: MockResultRecord) {
+    setViewing(rebuild(rec));
     setReviewing(false);
+  }
+
+  async function downloadPdf(rec: MockResultRecord) {
+    setDownloadingId(rec.id);
+    try {
+      const { attempt, result } = rebuild(rec);
+      const { downloadResultPdf } = await import("@/services/pdf-export");
+      await downloadResultPdf(result, attempt, profile);
+    } catch {
+      // ignore — the button just re-enables
+    } finally {
+      setDownloadingId(null);
+    }
   }
 
   if (!authReady) {
@@ -165,7 +183,12 @@ export default function DashboardPage() {
           {loadingData ? (
             <Notice>Loading your results…</Notice>
           ) : (
-            <ResultsHistory results={results} onView={openReport} />
+            <ResultsHistory
+              results={results}
+              onView={openReport}
+              onDownload={downloadPdf}
+              downloadingId={downloadingId}
+            />
           )}
         </div>
       </div>
