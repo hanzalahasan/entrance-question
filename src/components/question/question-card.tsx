@@ -362,22 +362,22 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
           </div>
         )}
 
-        <div className="mt-6 grid grid-cols-3 items-center gap-2">
+        <div className="mt-6 grid grid-cols-3 items-stretch gap-2">
           <button
             onClick={goPrevious}
             disabled={!canGoPrevious}
-            className={`justify-self-start rounded-2xl border border-gray-300 px-4 py-3 font-semibold text-gray-700 transition hover:bg-gray-50 active:scale-95 active:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:border-slate-600 dark:text-white dark:hover:bg-slate-700 dark:active:bg-slate-600 ${
+            className={`w-full rounded-2xl border border-gray-300 px-2 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 active:scale-95 active:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:border-slate-600 dark:text-white dark:hover:bg-slate-700 dark:active:bg-slate-600 md:px-4 md:py-3 md:text-base ${
               navPulse === "prev" ? "scale-95 bg-gray-100 dark:bg-slate-600" : ""
             }`}
           >
             Previous
           </button>
 
-          <div className="flex justify-center gap-2">
+          <div className="flex">
             {isAnswered && isCorrect && (
               <button
                 onClick={openExplanation}
-                className="rounded-2xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700 active:scale-95"
+                className="w-full rounded-2xl bg-blue-600 px-2 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 active:scale-95 md:px-4 md:py-3 md:text-base"
               >
                 Explanation
               </button>
@@ -386,7 +386,7 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
             {isAnswered && !isCorrect && !showAnswer && (
               <button
                 onClick={handleRevealAnswer}
-                className="rounded-2xl bg-red-600 px-4 py-3 font-semibold text-white transition hover:bg-red-700 active:scale-95"
+                className="w-full rounded-2xl bg-red-600 px-2 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 active:scale-95 md:px-4 md:py-3 md:text-base"
               >
                 Reveal
               </button>
@@ -395,7 +395,7 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
             {isAnswered && !isCorrect && showAnswer && (
               <button
                 onClick={openExplanation}
-                className="rounded-2xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700 active:scale-95"
+                className="w-full rounded-2xl bg-blue-600 px-2 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 active:scale-95 md:px-4 md:py-3 md:text-base"
               >
                 Explanation
               </button>
@@ -404,7 +404,7 @@ export default function QuestionCard({ questions, pool }: QuestionCardProps) {
 
           <button
             onClick={goNext}
-            className={`justify-self-end rounded-2xl border border-gray-300 px-4 py-3 font-semibold text-gray-700 transition hover:bg-gray-50 active:scale-95 active:bg-gray-100 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700 dark:active:bg-slate-600 ${
+            className={`w-full rounded-2xl border border-gray-300 px-2 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 active:scale-95 active:bg-gray-100 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700 dark:active:bg-slate-600 md:px-4 md:py-3 md:text-base ${
               navPulse === "next" ? "scale-95 bg-gray-100 dark:bg-slate-600" : ""
             }`}
           >

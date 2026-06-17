@@ -172,10 +172,10 @@ export default function TopFilterBar({
 
   return (
     <>
-      <section className="mb-5 rounded-3xl border border-gray-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-[1.1fr_1.1fr_.75fr_auto]">
+      <section className="mb-3 rounded-3xl border border-gray-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-800 md:mb-5 md:p-4">
+        <div className="grid grid-cols-2 gap-2 md:gap-3 lg:grid-cols-[1.1fr_1.1fr_.75fr_auto]">
           <div ref={subjectRef} className="relative">
-            <label className="mb-2 block text-sm font-black text-gray-500 dark:text-slate-400">
+            <label className="mb-1 hidden text-xs font-black text-gray-500 dark:text-slate-400 md:mb-2 md:block md:text-sm">
               All Subject
             </label>
 
@@ -191,7 +191,7 @@ export default function TopFilterBar({
             </button>
 
             {subjectOpen && (
-              <div className="absolute left-0 top-[76px] z-50 max-h-80 w-full overflow-y-auto rounded-2xl border border-gray-200 bg-white p-3 shadow-xl dark:border-slate-600 dark:bg-slate-800">
+              <div className="absolute left-0 top-14 z-50 md:top-[76px] max-h-80 w-full overflow-y-auto rounded-2xl border border-gray-200 bg-white p-3 shadow-xl dark:border-slate-600 dark:bg-slate-800">
                 <div className="mb-2 flex items-center justify-between">
                   <b className="text-sm text-gray-900 dark:text-white">
                     Subjects
@@ -234,7 +234,7 @@ export default function TopFilterBar({
           </div>
 
           <div ref={yearRef} className="relative">
-            <label className="mb-2 block text-sm font-black text-gray-500 dark:text-slate-400">
+            <label className="mb-1 hidden text-xs font-black text-gray-500 dark:text-slate-400 md:mb-2 md:block md:text-sm">
               Past Years
             </label>
 
@@ -250,7 +250,7 @@ export default function TopFilterBar({
             </button>
 
             {yearOpen && (
-              <div className="absolute left-0 top-[76px] z-50 max-h-80 w-full overflow-y-auto rounded-2xl border border-gray-200 bg-white p-3 shadow-xl dark:border-slate-600 dark:bg-slate-800">
+              <div className="absolute left-0 top-14 z-50 md:top-[76px] max-h-80 w-full overflow-y-auto rounded-2xl border border-gray-200 bg-white p-3 shadow-xl dark:border-slate-600 dark:bg-slate-800">
                 <input
                   value={yearSearch}
                   onChange={(event) => setYearSearch(event.target.value)}
@@ -298,7 +298,7 @@ export default function TopFilterBar({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-black text-gray-500 dark:text-slate-400">
+            <label className="mb-1 hidden text-xs font-black text-gray-500 dark:text-slate-400 md:mb-2 md:block md:text-sm">
               Mock Test
             </label>
 
@@ -311,7 +311,7 @@ export default function TopFilterBar({
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-black text-gray-500 dark:text-slate-400">
+            <label className="mb-1 hidden text-xs font-black text-gray-500 dark:text-slate-400 md:mb-2 md:block md:text-sm">
               &nbsp;
             </label>
 
@@ -348,7 +348,7 @@ export default function TopFilterBar({
           </div>
         )}
 
-        <p className="mt-3 text-center text-sm font-semibold text-gray-500 dark:text-slate-400">
+        <p className="mt-2 text-center text-xs font-semibold text-gray-500 dark:text-slate-400 md:mt-3 md:text-sm">
           Total Questions: {totalQuestions}
         </p>
       </section>

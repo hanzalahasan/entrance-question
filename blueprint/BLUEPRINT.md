@@ -1040,6 +1040,16 @@ sidebar nav entry. Reuses `rag-service` retrieval and the existing
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-17** — **Mobile-friendliness, phase 2: fluid sheets + compact filter
+  + nav fix** (mobile/tablet only; desktop unchanged). Bottom sheets now **slide
+  up** with a springy ease (`animate-sheet-up`) and a **draggable grab handle** —
+  drag up/down to resize, drag down to dismiss — via the new `useSheetDrag` hook.
+  The home **top filter bar** is compact on phones (labels hidden, tighter
+  padding/gaps, smaller footer) so the question card is visible on landing. The
+  question-card **Previous / Explanation / Next** buttons are now equal-width
+  `w-full` cells with smaller mobile text, fixing the overlap where the centre
+  button spilled over its neighbours. Desktop keeps full labels + movable windows.
+
 - **2026-06-17** — **Mobile-friendliness, phase 1: practice windows → bottom
   sheets.** New `useIsMobile` hook (`hooks/use-is-mobile.ts`, `useSyncExternalStore`,
   SSR-safe, 768px). The draggable/resizable **ExplanationWindow** and

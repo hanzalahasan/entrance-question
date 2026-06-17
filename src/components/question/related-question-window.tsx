@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import type { Question } from "@/types/question";
 import { useIsMobile } from "@/hooks/use-is-mobile";
+import { useSheetDrag } from "@/hooks/use-sheet-drag";
 import QuestionOption from "./question-option";
 import { renderRich } from "./rich-text";
 
@@ -63,6 +64,7 @@ export default function RelatedQuestionWindow({
   onClose,
 }: RelatedQuestionWindowProps) {
   const isMobile = useIsMobile();
+  const { sheetRef, height: sheetHeight, onHandleDown } = useSheetDrag(onClose);
   const [index, setIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
@@ -249,14 +251,17 @@ export default function RelatedQuestionWindow({
     // Full-screen, click-through layer so the main card behind stays hoverable;
     // only the window itself captures pointer events.
     <div
-      className={`fixed inset-0 z-[60] ${isMobile ? "bg-black/50" : "pointer-events-none"}`}
+      className={`fixed inset-0 z-[60] ${
+        isMobile ? "bg-black/50 animate-backdrop-in" : "pointer-events-none"
+      }`}
       onClick={isMobile ? onClose : undefined}
     >
       <div
+        ref={sheetRef}
         onClick={isMobile ? (e) => e.stopPropagation() : undefined}
         style={
           isMobile
-            ? undefined
+            ? { height: sheetHeight ?? undefined }
             : {
                 left: pos!.x,
                 top: pos!.y,
@@ -265,14 +270,17 @@ export default function RelatedQuestionWindow({
         }
         className={
           isMobile
-            ? "pointer-events-auto fixed inset-x-0 bottom-0 flex max-h-[90dvh] flex-col overflow-hidden rounded-t-3xl border border-gray-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800"
+            ? "animate-sheet-up pointer-events-auto fixed inset-x-0 bottom-0 flex max-h-[92dvh] flex-col overflow-hidden rounded-t-3xl border border-gray-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800"
             : "pointer-events-auto absolute flex max-h-[85vh] flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800"
         }
       >
-        {/* Mobile grab affordance */}
+        {/* Mobile grab handle — drag up/down to resize, drag down to dismiss */}
         {isMobile && (
-          <div className="flex justify-center pt-2">
-            <span className="h-1.5 w-10 rounded-full bg-gray-300 dark:bg-slate-600" />
+          <div
+            onPointerDown={onHandleDown}
+            className="flex touch-none cursor-grab justify-center py-3 active:cursor-grabbing"
+          >
+            <span className="h-1.5 w-12 rounded-full bg-gray-300 dark:bg-slate-600" />
           </div>
         )}
 

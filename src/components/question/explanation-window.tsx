@@ -9,6 +9,7 @@ import {
 import { Maximize2, Minimize2 } from "lucide-react";
 import type { Question } from "@/types/question";
 import { useIsMobile } from "@/hooks/use-is-mobile";
+import { useSheetDrag } from "@/hooks/use-sheet-drag";
 import { renderRich } from "./rich-text";
 
 const POS_KEY = "eq_expl_pos";
@@ -89,6 +90,7 @@ export default function ExplanationWindow({
   onClose,
 }: ExplanationWindowProps) {
   const isMobile = useIsMobile();
+  const { sheetRef, height: sheetHeight, onHandleDown } = useSheetDrag(onClose);
   const [showLong, setShowLong] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -105,7 +107,8 @@ export default function ExplanationWindow({
     origW: number;
     origH: number;
   } | null>(null);
-  const winRef = useRef<HTMLDivElement>(null);
+  // Single ref for the window/sheet element (used by desktop drag + mobile drag).
+  const winRef = sheetRef;
   const winPosRef = useRef(winPos);
   const winSizeRef = useRef(winSize);
 
@@ -252,18 +255,20 @@ export default function ExplanationWindow({
 
   return (
     <div
-      className={`fixed inset-0 z-50 ${dimmed ? "pointer-events-none" : "bg-black/50"}`}
+      className={`fixed inset-0 z-50 ${
+        dimmed ? "pointer-events-none" : "bg-black/50 animate-backdrop-in"
+      }`}
       onClick={isMobile && !dimmed ? onClose : undefined}
     >
       {/* Desktop: a movable/resizable window. Mobile: a full-width bottom sheet. */}
       <div
-        ref={winRef}
+        ref={sheetRef}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         onClick={isMobile ? (e) => e.stopPropagation() : undefined}
         style={
           isMobile
-            ? undefined
+            ? { height: sheetHeight ?? undefined }
             : {
                 left: winPos.x,
                 top: winPos.y,
@@ -274,7 +279,7 @@ export default function ExplanationWindow({
         }
         className={
           isMobile
-            ? "pointer-events-auto fixed inset-x-0 bottom-0 flex max-h-[90dvh] flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl dark:bg-slate-800"
+            ? "animate-sheet-up pointer-events-auto fixed inset-x-0 bottom-0 flex max-h-[92dvh] flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl dark:bg-slate-800"
             : `pointer-events-auto absolute flex flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-slate-800 ${
                 showLong ? "" : "max-h-[60vh]"
               }`
@@ -303,10 +308,13 @@ export default function ExplanationWindow({
             />
           ))}
 
-        {/* Mobile grab affordance */}
+        {/* Mobile grab handle — drag up/down to resize, drag down to dismiss */}
         {isMobile && (
-          <div className="flex justify-center pt-2">
-            <span className="h-1.5 w-10 rounded-full bg-gray-300 dark:bg-slate-600" />
+          <div
+            onPointerDown={onHandleDown}
+            className="flex touch-none cursor-grab justify-center py-3 active:cursor-grabbing"
+          >
+            <span className="h-1.5 w-12 rounded-full bg-gray-300 dark:bg-slate-600" />
           </div>
         )}
 
