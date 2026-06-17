@@ -1040,6 +1040,15 @@ sidebar nav entry. Reuses `rag-service` retrieval and the existing
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-17** — **Mock test: mobile-friendly pass.** No swipe in mocks (kept
+  out). Exam header restyled for phones: the Pause/Reset/Exit/Submit controls drop
+  to their own full-width centred row with compact `text-xs`/tighter padding
+  ("Save & exit" → "Exit" on mobile), the timer/badge shrink a step, header
+  padding `p-3 md:p-4`. Question nav buttons compacted ("← Prev"), the
+  keyboard-hint line is hidden on mobile, palette + paused-screen padding slimmed.
+  Same compact nav (equal-width, no overlap) + hidden hint applied to the answer
+  **review** screen. Desktop unchanged.
+
 - **2026-06-17** — **Mobile polish: no default option highlight, blurred peek
   card, collapsible filter bar.** (1) On mobile the first option no longer shows
   the keyboard-nav highlight border by default (`highlighted` gated by

@@ -252,7 +252,7 @@ export default function MockExam({
   return (
     <div className="mx-auto w-full max-w-6xl">
       {/* Header bar */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-gray-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-gray-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-800 md:p-4">
         <div>
           <p className="text-sm font-black text-gray-900 dark:text-white">
             Mock Test
@@ -269,13 +269,13 @@ export default function MockExam({
             {modeBadge.text}
           </span>
           <div
-            className={`rounded-2xl px-5 py-2 text-center font-black tabular-nums ${
+            className={`rounded-2xl px-4 py-1.5 text-center font-black tabular-nums md:px-5 md:py-2 ${
               remaining <= 300
                 ? "bg-red-100 text-red-700"
                 : "bg-blue-50 text-blue-700 dark:bg-slate-700 dark:text-white"
             }`}
           >
-            <span className="text-xl">{formatClock(remaining)}</span>
+            <span className="text-lg md:text-xl">{formatClock(remaining)}</span>
             {paused && <span className="ml-2 text-xs">PAUSED</span>}
           </div>
           {!paused && prepSeconds > 0 && (
@@ -285,28 +285,30 @@ export default function MockExam({
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Controls — own full-width row on phones, inline on desktop */}
+        <div className="flex w-full flex-wrap items-center justify-center gap-2 md:w-auto md:justify-end">
           <button
             onClick={togglePause}
-            className="rounded-2xl border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 active:scale-95 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700"
+            className="rounded-2xl border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 transition hover:bg-gray-50 active:scale-95 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700 md:px-4 md:py-2 md:text-sm"
           >
             {paused ? "Resume" : "Pause"}
           </button>
           <button
             onClick={confirmReset}
-            className="rounded-2xl border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 active:scale-95 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700"
+            className="rounded-2xl border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 transition hover:bg-gray-50 active:scale-95 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700 md:px-4 md:py-2 md:text-sm"
           >
             Reset
           </button>
           <button
             onClick={onExit}
-            className="rounded-2xl border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 active:scale-95 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700"
+            className="rounded-2xl border border-gray-300 px-3 py-1.5 text-xs font-bold text-gray-700 transition hover:bg-gray-50 active:scale-95 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700 md:px-4 md:py-2 md:text-sm"
           >
-            Save &amp; exit
+            <span className="md:hidden">Exit</span>
+            <span className="hidden md:inline">Save &amp; exit</span>
           </button>
           <button
             onClick={confirmSubmit}
-            className="rounded-2xl bg-blue-600 px-5 py-2 text-sm font-black text-white transition hover:bg-blue-700 active:scale-95"
+            className="rounded-2xl bg-blue-600 px-4 py-1.5 text-xs font-black text-white transition hover:bg-blue-700 active:scale-95 md:px-5 md:py-2 md:text-sm"
           >
             Submit
           </button>
@@ -314,7 +316,7 @@ export default function MockExam({
       </div>
 
       {paused ? (
-        <div className="rounded-3xl border border-gray-200 bg-white p-12 text-center shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <div className="rounded-3xl border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-slate-700 dark:bg-slate-800 md:p-12">
           <p className="text-lg font-black text-gray-900 dark:text-white">
             Test paused
           </p>
@@ -387,18 +389,18 @@ export default function MockExam({
               ))}
             </div>
 
-            <div className="mt-6 flex items-center justify-between">
+            <div className="mt-6 flex items-center justify-between gap-2">
               <button
                 onClick={() => go(-1)}
                 disabled={index === 0}
-                className="rounded-2xl border border-gray-300 px-5 py-3 font-bold text-gray-700 transition hover:bg-gray-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700"
+                className="rounded-2xl border border-gray-300 px-4 py-2.5 text-sm font-bold text-gray-700 transition hover:bg-gray-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700 md:px-5 md:py-3 md:text-base"
               >
-                ← Previous
+                ← Prev
               </button>
               {answers[current.id] != null && (
                 <button
                   onClick={() => selectOption(answers[current.id])}
-                  className="text-sm font-bold text-gray-500 underline hover:text-gray-700 dark:text-slate-400"
+                  className="text-xs font-bold text-gray-500 underline hover:text-gray-700 dark:text-slate-400 md:text-sm"
                 >
                   Clear answer
                 </button>
@@ -406,19 +408,19 @@ export default function MockExam({
               <button
                 onClick={() => go(1)}
                 disabled={index === questions.length - 1}
-                className="rounded-2xl border border-gray-300 px-5 py-3 font-bold text-gray-700 transition hover:bg-gray-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700"
+                className="rounded-2xl border border-gray-300 px-4 py-2.5 text-sm font-bold text-gray-700 transition hover:bg-gray-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700 md:px-5 md:py-3 md:text-base"
               >
                 Next →
               </button>
             </div>
 
-            <p className="mt-4 text-center text-xs font-semibold text-gray-400 dark:text-slate-500">
+            <p className="mt-4 hidden text-center text-xs font-semibold text-gray-400 dark:text-slate-500 md:block">
               Keyboard: ← / → or Enter to move questions · ↑ / ↓ to choose an option
             </p>
           </div>
 
           {/* Palette */}
-          <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800 md:p-5">
             <MockPalette
               questions={questions}
               sections={sections}

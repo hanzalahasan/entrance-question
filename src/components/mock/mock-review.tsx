@@ -167,36 +167,36 @@ export default function MockReview({
           </div>
 
           {/* Nav + explanation */}
-          <div className="mt-6 grid grid-cols-3 items-center gap-2">
+          <div className="mt-6 grid grid-cols-3 items-stretch gap-2">
             <button
               onClick={() => go(-1)}
               disabled={index === 0}
-              className="justify-self-start rounded-2xl border border-gray-300 px-5 py-3 font-bold text-gray-700 transition hover:bg-gray-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700"
+              className="w-full rounded-2xl border border-gray-300 px-2 py-2.5 text-sm font-bold text-gray-700 transition hover:bg-gray-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700 md:px-5 md:py-3 md:text-base"
             >
-              ← Previous
+              ← Prev
             </button>
             <button
               onClick={() => setShowExplanation(true)}
-              className="justify-self-center rounded-2xl bg-blue-600 px-5 py-3 font-bold text-white transition hover:bg-blue-700 active:scale-95"
+              className="w-full rounded-2xl bg-blue-600 px-2 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700 active:scale-95 md:px-5 md:py-3 md:text-base"
             >
               Explanation
             </button>
             <button
               onClick={() => go(1)}
               disabled={index === questions.length - 1}
-              className="justify-self-end rounded-2xl border border-gray-300 px-5 py-3 font-bold text-gray-700 transition hover:bg-gray-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700"
+              className="w-full rounded-2xl border border-gray-300 px-2 py-2.5 text-sm font-bold text-gray-700 transition hover:bg-gray-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700 md:px-5 md:py-3 md:text-base"
             >
               Next →
             </button>
           </div>
 
-          <p className="mt-4 text-center text-xs font-semibold text-gray-400 dark:text-slate-500">
+          <p className="mt-4 hidden text-center text-xs font-semibold text-gray-400 dark:text-slate-500 md:block">
             Keyboard: ← / → or Enter to move questions
           </p>
         </div>
 
         {/* Palette (colour-coded by correctness) */}
-        <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800 md:p-5">
           <MockPalette
             questions={questions}
             sections={sections}
