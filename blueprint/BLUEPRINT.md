@@ -1040,6 +1040,19 @@ sidebar nav entry. Reuses `rag-service` retrieval and the existing
 
 > Newest first. Each app change adds an entry here. Commit hashes reference the **app** repo.
 
+- **2026-06-17** — **Dashboard sidebar + super-admin Users page.** The student
+  **dashboard** now has a sidebar menu — **Overview** (profile + activity),
+  **Strengths & Weaknesses** (the report on its own page), **Mock Tests** —
+  (horizontal scroll tabs on mobile, vertical sidebar on desktop). New
+  **super-admin `/admin/users`** (admin sidebar "Users"): lists every signed-up
+  user with **name, email, phone, joined, last login**, and activity (mocks +
+  avg %, practice + accuracy), plus totals. Backed by `GET /api/admin/users`
+  using a new **service-role** client (`lib/supabase-admin.ts`, bypasses RLS) —
+  **protected** by the admin-cookie check (the `/admin/*` middleware only guards
+  pages). Requires **`SUPABASE_SERVICE_ROLE_KEY`** (server-only secret; shows a
+  notice until set) and you should set **`ADMIN_PASSWORD`** so the admin area +
+  this PII is actually gated.
+
 - **2026-06-17** — **Dashboard: strengths/weaknesses, AI study plan, PDF export.**
   **Practice tracking:** new `practice_attempts` table (owner-only RLS,
   `supabase/practice-attempts-setup.sql`) + `practice-attempt-store`; the question

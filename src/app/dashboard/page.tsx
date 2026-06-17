@@ -51,6 +51,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const { user, profile, loading: authLoading, authReady } = useAuth();
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
+  const [tab, setTab] = useState<"overview" | "insights" | "mocks">("overview");
 
   const [results, setResults] = useState<MockResultRecord[]>([]);
   const [practice, setPractice] = useState<PracticeAttempt[]>([]);
@@ -145,50 +146,82 @@ export default function DashboardPage() {
     );
   }
 
+  const TABS = [
+    { id: "overview", label: "Overview", icon: "🏠" },
+    { id: "insights", label: "Strengths & Weaknesses", icon: "📊" },
+    { id: "mocks", label: "Mock Tests", icon: "📝" },
+  ] as const;
+
   return (
     <Shell>
-      <div className="space-y-6">
-        <ProfileCard />
-
-        <div>
-          <h2 className="mb-3 text-lg font-black text-gray-900 dark:text-white">
-            Activity
-          </h2>
-          <ActivityStats results={results} />
-        </div>
-
-        <div>
-          <h2 className="mb-3 text-lg font-black text-gray-900 dark:text-white">
-            Strengths &amp; weaknesses
-          </h2>
-          {loadingData ? (
-            <Notice>Analysing your performance…</Notice>
-          ) : (
-            <PerformanceInsights performance={performance} />
-          )}
-        </div>
-
-        <div>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-black text-gray-900 dark:text-white">
-              Your mock tests
-            </h2>
-            <Link
-              href="/mock"
-              className="rounded-2xl bg-blue-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-blue-700"
+      <div className="flex flex-col gap-5 md:flex-row md:gap-6">
+        {/* Sidebar menu (horizontal scroll on phones, vertical on desktop) */}
+        <nav className="flex gap-2 overflow-x-auto pb-1 md:w-56 md:shrink-0 md:flex-col md:overflow-visible md:pb-0">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`shrink-0 rounded-2xl px-4 py-2.5 text-left text-sm font-bold transition md:w-full ${
+                tab === t.id
+                  ? "bg-blue-600 text-white"
+                  : "text-gray-700 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800"
+              }`}
             >
-              + Take a mock
-            </Link>
-          </div>
-          {loadingData ? (
-            <Notice>Loading your results…</Notice>
-          ) : (
-            <ResultsHistory
-              results={results}
-              onView={openReport}
-              onDownload={downloadPdf}
-              downloadingId={downloadingId}
-            />
+              <span className="mr-2">{t.icon}</span>
+              {t.label}
+            </button>
+          ))}
+          <Link
+            href="/mock"
+            className="shrink-0 rounded-2xl border border-blue-300 px-4 py-2.5 text-center text-sm font-bold text-blue-700 transition hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 md:mt-2"
+          >
+            + Take a mock
+          </Link>
+        </nav>
+
+        {/* Section content */}
+        <div className="min-w-0 flex-1 space-y-6">
+          {tab === "overview" && (
+            <>
+              <ProfileCard />
+              <div>
+                <h2 className="mb-3 text-lg font-black text-gray-900 dark:text-white">
+                  Activity
+                </h2>
+                <ActivityStats results={results} />
+              </div>
+            </>
+          )}
+
+          {tab === "insights" && (
+            <div>
+              <h2 className="mb-3 text-lg font-black text-gray-900 dark:text-white">
+                Strengths &amp; weaknesses
+              </h2>
+              {loadingData ? (
+                <Notice>Analysing your performance…</Notice>
+              ) : (
+                <PerformanceInsights performance={performance} />
+              )}
+            </div>
+          )}
+
+          {tab === "mocks" && (
+            <div>
+              <h2 className="mb-3 text-lg font-black text-gray-900 dark:text-white">
+                Your mock tests
+              </h2>
+              {loadingData ? (
+                <Notice>Loading your results…</Notice>
+              ) : (
+                <ResultsHistory
+                  results={results}
+                  onView={openReport}
+                  onDownload={downloadPdf}
+                  downloadingId={downloadingId}
+                />
+              )}
+            </div>
           )}
         </div>
       </div>

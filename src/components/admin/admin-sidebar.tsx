@@ -12,6 +12,7 @@ const menuItems = [
   { label: "Generate Questions", href: "/admin/generate-questions" },
   { label: "Mock Test Settings", href: "/admin/mock-settings" },
   { label: "Mock Sets", href: "/admin/mock-sets" },
+  { label: "Users", href: "/admin/users" },
   { label: "Settings", href: "/admin/settings" },
 ];
 
